@@ -1,103 +1,235 @@
-import Image from "next/image";
+import { sanityFetch } from "@/sanity/lib/live";
+import { defineQuery } from "groq";
+import QuestionCard from "@/components/QuestionCard";
+import PostCard from "@/components/PostCard";
+import CategoriesSidebar from "@/components/CategoriesSidebar";
 
-export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+export const revalidate = 0;
+export const dynamic = 'force-static';
+export const fetchCache = 'force-no-store';
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+interface Question {
+  _id: string;
+  title: string;
+  description?: string;
+  author: {
+    username: string;
+    imageUrl: string;
+    clerkId?: string;
+  };
+  category?: {
+    name: string;
+    color: string;
+    icon: string;
+  };
+  tags?: string[];
+  isAnswered: boolean;
+  isDeleted: boolean;
+  createdAt: string;
+  answerCount?: number;
+  topAnswer?: {
+    _id: string;
+    content: any[];
+    author: {
+      username: string;
+      imageUrl: string;
+      clerkId?: string;
+    };
+    voteCount?: number;
+    userVote?: "upvote" | "downvote" | null;
+    createdAt: string;
+  };
+}
+
+interface Post {
+  _id: string;
+  postTitle: string;
+  body?: any[];
+  image?: {
+    asset: {
+      url: string;
+    };
+    alt?: string;
+  };
+  author: {
+    username: string;
+    imageUrl: string;
+    clerkId?: string;
+  };
+  subreddit: {
+    title: string;
+    slug: {
+      current: string;
+    };
+  };
+  publishedAt: string;
+  commentCount?: number;
+}
+
+const homeQuestionsQuery = defineQuery(`
+  *[_type == "question" && !isDeleted] | order(createdAt desc) [0...10] {
+    _id,
+    title,
+    description,
+    author->{
+      username,
+      imageUrl,
+      clerkId
+    },
+    category->{
+      name,
+      color,
+      icon
+    },
+    tags,
+    isAnswered,
+    isDeleted,
+    createdAt,
+    "answerCount": count(*[_type == "answer" && references(^._id) && !isDeleted]),
+    "topAnswer": *[_type == "answer" && references(^._id) && !isDeleted] | order(createdAt asc) [0] {
+      _id,
+      content,
+      author->{
+        username,
+        imageUrl,
+        clerkId
+      },
+      createdAt
+    }
+  }
+`);
+
+const homePostsQuery = defineQuery(`
+  *[_type == "post" && !isDeleted] | order(publishedAt desc) [0...10] {
+    _id,
+    postTitle,
+    body,
+    image{
+      asset->{
+        url,
+        metadata
+      },
+      alt
+    },
+    author->{
+      username,
+      imageUrl,
+      clerkId
+    },
+    subreddit->{
+      title,
+      slug
+    },
+    publishedAt,
+    "commentCount": count(*[_type == "comment" && references(^._id) && !isDeleted])
+  }
+`);
+
+export default async function HomePage() {
+  let questions: Question[] = [];
+  let posts: Post[] = [];
+  let loading = false;
+
+  try {
+    const questionsResult = await sanityFetch({
+      query: homeQuestionsQuery,
+      params: {},
+    });
+
+    if (questionsResult.data) {
+      questions = questionsResult.data as any;
+    }
+
+    const postsResult = await sanityFetch({
+      query: homePostsQuery,
+      params: {},
+    });
+
+    if (postsResult.data) {
+      posts = postsResult.data as any;
+    }
+  } catch (error) {
+    console.error("Error fetching content:", error);
+    loading = true;
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-4xl mx-auto p-4">
+          <div className="space-y-4">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="bg-white rounded-lg p-6 animate-pulse">
+                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                <div className="h-20 bg-gray-200 rounded mt-4"></div>
+              </div>
+            ))}
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50" suppressHydrationWarning>
+      <div className="max-w-7xl mx-auto px-4 py-4">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="lg:col-span-1">
+            <CategoriesSidebar />
+          </div>
+
+          <div className="lg:col-span-3">
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-gray-900">
+                Recent Activity
+              </h1>
+              <p className="text-gray-600">
+                Discover questions, answers, and posts from our community
+              </p>
+            </div>
+
+            <div className="space-y-4" suppressHydrationWarning>
+              {posts.map((post) => (
+                <PostCard key={post._id} post={post} />
+              ))}
+
+              {questions.map((question) => (
+                <QuestionCard key={question._id} question={question} />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {questions.length === 0 && posts.length === 0 && (
+          <div className="text-center py-12">
+            <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-2xl">❓</span>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              No content yet
+            </h3>
+            <p className="text-gray-500 mb-4">
+              Be the first to ask a question or create a post!
+            </p>
+            <div className="flex gap-4 justify-center">
+              <a
+                href="/ask"
+                className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+              >
+                Ask a Question
+              </a>
+              <a
+                href="/create-post"
+                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Create a Post
+              </a>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
+

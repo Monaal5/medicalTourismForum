@@ -1,0 +1,22 @@
+# Enable Rewrite Engine
+RewriteEngine On
+
+# --- Redirect www to non-www ---
+RewriteCond %{HTTP_HOST} ^www\.medicaltourismforum\.com$ [NC]
+RewriteRule ^(.*)$ https://medicaltourismforum.com/$1 [L,R=301]
+
+# --- Force HTTPS ---
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# --- Disable directory listing ---
+Options -Indexes
+
+# --- Default file to serve ---
+DirectoryIndex index.html
+
+# --- Handle Next.js static export routing (for SPA behavior) ---
+# If file or directory does not exist, serve index.html
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.html [L]

@@ -1,0 +1,38 @@
+# Dependencies
+node_modules
+
+# Build output
+.next
+out
+
+# Environment files
+.env
+.env.local
+.env*.local
+
+# Debug
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Markdown docs (optional - remove if you want them deployed)
+*.md
+!README.md
+
+# Test files
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx

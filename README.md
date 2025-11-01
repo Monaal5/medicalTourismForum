@@ -1,8 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Medical Tourism Forum
+
+A comprehensive medical tourism forum built with Next.js, Sanity CMS, and Clerk authentication.
+
+## Features
+
+- User authentication and profiles
+- Q&A system with voting
+- Community discussions
+- Post creation and management
+- Search functionality
+- Responsive design
+
+## Profile System
+
+The application has a dual profile system:
+
+### Public Profile Pages (`/profile/[username]`)
+- **Purpose**: View any user's public profile
+- **Access**: Available to all users
+- **Content**: User's questions, answers, bio, credentials
+- **Navigation**: Accessed by clicking usernames in posts/comments or from profile dropdown
+
+### Settings Page (`/settings`)
+- **Purpose**: Edit your own account settings and profile information
+- **Access**: Private - only for logged-in users editing their own profile
+- **Content**: Profile picture, name, email, account settings
+- **Navigation**: Accessed via "Settings" link in profile dropdown
+
+### Profile Routing Logic
+- `/profile` → Redirects to your public profile (`/profile/[your-username]`)
+- `/profile/[username]` → Shows public profile for the specified user
+- `/settings` → Shows account settings for the logged-in user
 
 ## Getting Started
 
-First, run the development server:
+First, install dependencies:
+
+```bash
+npm install
+# or
+yarn install
+# or
+pnpm install
+```
+
+Set up environment variables:
+```bash
+# Copy the example env file
+cp .env.example .env.local
+
+# Add your Clerk keys and Sanity configuration
+```
+
+Run the development server:
 
 ```bash
 npm run dev
@@ -10,27 +60,55 @@ npm run dev
 yarn dev
 # or
 pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Tech Stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Frontend**: Next.js 14, React, TypeScript
+- **Styling**: Tailwind CSS, shadcn/ui components
+- **Authentication**: Clerk
+- **CMS**: Sanity
+- **Database**: Sanity Content Lake
+- **Deployment**: Vercel (recommended)
 
-## Learn More
+## Project Structure
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+├── app/
+│   ├── (app)/
+│   │   ├── profile/
+│   │   │   ├── [username]/    # Public profile pages
+│   │   │   └── page.tsx       # Profile redirect
+│   │   ├── settings/          # Account settings
+│   │   └── ...
+│   └── api/
+├── components/
+│   ├── header/
+│   ├── ui/
+│   └── ...
+├── hooks/
+├── lib/
+└── sanity/
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Profile Navigation Flow
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. **Clicking Avatar (Top Right)**: Opens dropdown → Click name → Goes to your public profile
+2. **Clicking Usernames in Posts**: Direct link to that user's public profile  
+3. **Settings Link**: Goes to account settings page
+4. **Profile Icon in Navigation**: Goes to settings page
 
-## Deploy on Vercel
+## Contributing
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## License
+
+This project is licensed under the MIT License.
