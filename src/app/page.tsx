@@ -4,9 +4,8 @@ import QuestionCard from "@/components/QuestionCard";
 import PostCard from "@/components/PostCard";
 import CategoriesSidebar from "@/components/CategoriesSidebar";
 
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
-export const dynamic = 'force-static';
-export const fetchCache = 'force-no-store';
 
 interface Question {
   _id: string;
@@ -232,4 +231,3 @@ export default async function HomePage() {
     </div>
   );
 }
-
