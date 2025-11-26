@@ -21,11 +21,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Medical Tourism Forum - Healthcare Discussion Community",
   description: "Join the medical tourism community to discuss healthcare experiences, ask questions, and share knowledge about medical treatments worldwide.",
-  icons: {
-    icon: [
-      { url: '/favicon.ico' },
-    ],
-  },
+
 };
 
 export default function RootLayout({
