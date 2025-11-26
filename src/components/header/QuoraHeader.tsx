@@ -229,7 +229,7 @@ export default function QuoraHeader() {
       >
         {/* Top Navigation */}
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8" suppressHydrationWarning>
-          <div className="flex items-center justify-between py-2" suppressHydrationWarning>
+          <div className="flex items-center justify-between h-14 sm:h-16" suppressHydrationWarning>
             {/* Mobile: Hamburger Menu */}
             <button
               className="md:hidden mobile-menu-button text-gray-700 p-2 hover:bg-gray-100 rounded-lg"
@@ -252,7 +252,7 @@ export default function QuoraHeader() {
                   alt="Medical Tourism Forum"
                   width={320}
                   height={100}
-                  className="w-40 sm:w-52 md:w-80 h-auto"
+                  className="h-10 sm:h-12 md:h-20 w-auto"
                   suppressHydrationWarning
                 />
               </Link>
