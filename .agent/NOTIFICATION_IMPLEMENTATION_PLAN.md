@@ -16,7 +16,7 @@
 
 **Changes:**
 ```typescript
-// Update notification query to use Sanity username
+// Update notification query to use Sanity username ---
 const notificationsQuery = `
   *[_type == "notification" && recipient._ref == $userId] | order(createdAt desc) {
     _id,
