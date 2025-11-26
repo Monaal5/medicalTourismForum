@@ -65,6 +65,19 @@ export default function QuoraHeader() {
   const { categories, loading: categoriesLoading } = useCategories();
   const { theme, setTheme } = useTheme();
 
+  // Fetch unread notification count
+  const fetchUnreadCount = async (userId: string) => {
+    try {
+      const response = await fetch(`/api/notifications/unread-count?userId=${userId}`);
+      const data = await response.json();
+      if (data.success) {
+        setUnreadCount(data.count);
+      }
+    } catch (error) {
+      console.error("Error fetching unread count:", error);
+    }
+  };
+
   // Fetch username from Sanity to match what's used in posts/questions
   useEffect(() => {
     if (user?.id) {
@@ -114,18 +127,7 @@ export default function QuoraHeader() {
     return `/profile/${getUsername()}`;
   };
 
-  // Fetch unread notification count
-  const fetchUnreadCount = async (userId: string) => {
-    try {
-      const response = await fetch(`/api/notifications/unread-count?userId=${userId}`);
-      const data = await response.json();
-      if (data.success) {
-        setUnreadCount(data.count);
-      }
-    } catch (error) {
-      console.error("Error fetching unread count:", error);
-    }
-  };
+
 
   // Poll for new notifications
   useEffect(() => {

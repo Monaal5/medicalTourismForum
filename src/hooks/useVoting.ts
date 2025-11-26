@@ -18,12 +18,6 @@ export function useVoting(targetId: string, targetType: 'post' | 'comment' | 'an
   });
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (targetId && user) {
-      fetchVotes();
-    }
-  }, [targetId, user]);
-
   const fetchVotes = async () => {
     if (!user) return;
 
@@ -42,6 +36,12 @@ export function useVoting(targetId: string, targetType: 'post' | 'comment' | 'an
       console.error('Error fetching votes:', error);
     }
   };
+
+  useEffect(() => {
+    if (targetId && user) {
+      fetchVotes();
+    }
+  }, [targetId, user]);
 
   const vote = async (voteType: 'upvote' | 'downvote') => {
     if (!user || loading) return;
@@ -71,7 +71,7 @@ export function useVoting(targetId: string, targetType: 'post' | 'comment' | 'an
       } else {
         // Update local state optimistically
         const newVoteData = { ...voteData };
-        
+
         if (data.action === 'removed') {
           newVoteData.userVote = null;
           newVoteData.voteCount = voteData.voteCount + (voteData.userVote === 'upvote' ? -1 : 1);

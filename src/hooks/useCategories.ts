@@ -15,10 +15,6 @@ export function useCategories() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        fetchCategories();
-    }, []);
-
     const fetchCategories = async () => {
         try {
             setLoading(true);
@@ -49,6 +45,10 @@ export function useCategories() {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        fetchCategories();
+    }, []);
 
     const seedSampleCategories = async () => {
         try {
