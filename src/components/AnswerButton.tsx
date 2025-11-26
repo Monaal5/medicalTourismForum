@@ -237,6 +237,7 @@ export default function AnswerButton({
               <button
                 onClick={handleReset}
                 className="text-blue-600 hover:text-blue-800 transition-colors"
+                suppressHydrationWarning
               >
                 Categories
               </button>
@@ -330,9 +331,10 @@ export default function AnswerButton({
                             {question.title}
                           </h3>
                           {question.description && (
-                            <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                              {question.description}
-                            </p>
+                            <div
+                              className="text-sm text-gray-600 mb-3 line-clamp-2 prose prose-sm max-w-none [&>p]:mb-0"
+                              dangerouslySetInnerHTML={{ __html: question.description }}
+                            />
                           )}
                           <div className="flex items-center space-x-4 text-xs text-gray-500">
                             <span>by {question.author.username}</span>

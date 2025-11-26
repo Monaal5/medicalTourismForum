@@ -9,17 +9,21 @@ export async function GET() {
   try {
     const { userId } = await auth();
 
+    console.log("=== GET CURRENT USER API ===");
+    console.log("Clerk User ID:", userId);
+
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Check if user exists in Sanity
+    // Check if user exists in Sanity by clerkId
     const currentUserQuery = defineQuery(`
-      *[_type == "user" && _id == $userId][0] {
+      *[_type == "user" && clerkId == $userId][0] {
         _id,
         username,
         email,
-        imageUrl
+        imageUrl,
+        clerkId
       }
     `);
 
@@ -27,6 +31,8 @@ export async function GET() {
       query: currentUserQuery,
       params: { userId },
     });
+
+    console.log("User found in Sanity:", result.data ? result.data.username : "NOT FOUND");
 
     if (result.data?.username) {
       // User exists, return their username
@@ -37,8 +43,8 @@ export async function GET() {
       });
     }
 
-    // User doesn't exist in Sanity, we need to create them
-    // But we can't do that here without Clerk user data
+    // User doesn't exist in Sanity
+    console.log("User not found in Sanity, needs to be created");
     return NextResponse.json({
       success: false,
       username: null,
@@ -48,7 +54,7 @@ export async function GET() {
   } catch (error) {
     console.error("Error fetching current user:", error);
     return NextResponse.json(
-      { error: "Failed to fetch user data" },
+      { error: "Failed to get user" },
       { status: 500 }
     );
   }

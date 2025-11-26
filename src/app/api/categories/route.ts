@@ -24,7 +24,7 @@ export async function GET() {
       categories: result || [],
     });
   } catch (error) {
-    console.error("Error fetching categories:", error);
+    console.error("Error fetching categories from Sanity:", error);
     return NextResponse.json(
       {
         success: false,
@@ -57,6 +57,20 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 },
+      );
+    }
+
+    // Check for existing category with same name (case-insensitive)
+    const existingCategory = await adminClient.fetch(
+      `*[_type == "category" && lower(name) == lower($name)][0]`,
+      { name }
+    );
+
+    if (existingCategory) {
+      console.log("Category already exists:", existingCategory.name);
+      return NextResponse.json(
+        { error: "Category with this name already exists" },
+        { status: 400 }
       );
     }
 

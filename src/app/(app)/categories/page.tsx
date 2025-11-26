@@ -61,6 +61,24 @@ export default function CategoriesPage() {
     color: "#ef4444",
   });
 
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch("/api/categories");
+      if (response.ok) {
+        const data = await response.json();
+        setCategories(data.categories || []);
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
   // Show loading while checking auth
   if (!isLoaded) {
     return (
@@ -81,24 +99,6 @@ export default function CategoriesPage() {
       />
     );
   }
-
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  const fetchCategories = async () => {
-    try {
-      const response = await fetch("/api/categories");
-      if (response.ok) {
-        const data = await response.json();
-        setCategories(data.categories || []);
-      }
-    } catch (error) {
-      console.error("Error fetching categories:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -371,11 +371,10 @@ export default function CategoriesPage() {
           {categories.map((category) => (
             <div
               key={category._id}
-              className={`bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow ${
-                deletingId === category._id
-                  ? "opacity-50 pointer-events-none"
-                  : ""
-              }`}
+              className={`bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow ${deletingId === category._id
+                ? "opacity-50 pointer-events-none"
+                : ""
+                }`}
             >
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-3">
@@ -430,7 +429,7 @@ export default function CategoriesPage() {
               )}
 
               <Link
-                href={`/category/${category.slug}`}
+                href={`/categories/${category.slug}`}
                 className="text-blue-600 hover:text-blue-700 text-sm font-medium"
               >
                 View Questions →

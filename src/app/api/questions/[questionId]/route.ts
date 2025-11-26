@@ -10,7 +10,7 @@ export async function GET(
 ) {
   try {
     const { questionId } = await params;
-    
+
     console.log('=== API GET /api/questions/[questionId] ===');
     console.log('Question ID:', questionId);
     console.log('Request URL:', request.url);
@@ -18,14 +18,14 @@ export async function GET(
     // First, try a simple query to see if the question exists at all
     const simpleCheckQuery = `*[_type == "question" && _id == $questionId][0]{ _id, title, isDeleted }`;
     console.log('Running simple check query...');
-    
+
     const simpleCheck = await adminClient.fetch(simpleCheckQuery, { questionId });
     console.log('Simple check result:', simpleCheck);
-    
+
     if (!simpleCheck) {
       console.log('❌ Question not found in database');
       return NextResponse.json(
-        { 
+        {
           success: false,
           error: "Question not found",
           questionId,
@@ -34,11 +34,11 @@ export async function GET(
         { status: 404 }
       );
     }
-    
+
     if (simpleCheck.isDeleted) {
       console.log('❌ Question is marked as deleted');
       return NextResponse.json(
-        { 
+        {
           success: false,
           error: "Question has been deleted",
           questionId
@@ -46,11 +46,11 @@ export async function GET(
         { status: 404 }
       );
     }
-    
+
     console.log('✓ Question exists, fetching full details...');
 
-    // Query to fetch question with answers and comments
-    const questionQuery = defineQuery(`
+    // Simplified query to avoid nested query issues
+    const questionQuery = `
       *[_type == "question" && _id == $questionId && !isDeleted][0] {
         _id,
         title,
@@ -74,55 +74,54 @@ export async function GET(
         "viewCount": 0,
         "followerCount": 0,
         "isFollowing": false,
-        "isBookmarked": false,
-        "answers": *[_type == "answer" && references(^._id) && !isDeleted] | order(createdAt desc) {
-          _id,
-          content,
-          author->{
-            _id,
-            username,
-            imageUrl,
-            bio,
-            clerkId
-          },
-          createdAt,
-          updatedAt,
-          "voteCount": 0,
-          "userVote": null,
-          "isAccepted": false,
-          "commentCount": count(*[_type == "comment" && references(^._id) && !isDeleted]),
-          "comments": *[_type == "comment" && references(^._id) && !isDeleted && !defined(parentComment)] | order(createdAt asc) {
-            _id,
-            content: comment,
-            author->{
-              _id,
-              username,
-              imageUrl
-            },
-            createdAt,
-            "voteCount": 0,
-            "userVote": null
-          }
-        }
+        "isBookmarked": false
       }
-    `);
-    
-    console.log('Executing full question query...');
+    `;
+
+    console.log('Executing question query...');
     const question = await adminClient.fetch(questionQuery, { questionId });
-    
+
     console.log('Question fetch result:', question ? 'Found' : 'Not found');
-    console.log('Question has answers:', question?.answers?.length || 0);
 
     if (!question) {
-      console.log('❌ Full query returned no result');
+      console.log('❌ Query returned no result');
       return NextResponse.json(
-        { 
+        {
           success: false,
-          error: "Question not found" 
+          error: "Question not found"
         },
         { status: 404 }
       );
     }
+
+    // Fetch answers separately to avoid complex nested queries
+    const answersQuery = `
+      *[_type == "answer" && references($questionId) && !isDeleted] | order(createdAt desc) {
+        _id,
+        content,
+        author->{
+          _id,
+          username,
+          imageUrl,
+          bio,
+          clerkId
+        },
+        createdAt,
+        updatedAt,
+        "voteCount": 0,
+        "userVote": null,
+        "isAccepted": false,
+        "commentCount": 0,
+        "comments": []
+      }
+    `;
+
+    console.log('Fetching answers...');
+    const answers = await adminClient.fetch(answersQuery, { questionId });
+    console.log('Answers found:', answers?.length || 0);
+
+    // Add answers to question
+    question.answers = answers || [];
 
     console.log('✓ Returning question successfully');
     return NextResponse.json({
@@ -133,9 +132,9 @@ export async function GET(
     console.error("❌ Error fetching question:", error);
     console.error("Error details:", error instanceof Error ? error.message : 'Unknown error');
     console.error("Error stack:", error instanceof Error ? error.stack : 'No stack trace');
-    
+
     return NextResponse.json(
-      { 
+      {
         success: false,
         error: "Failed to fetch question",
         details: error instanceof Error ? error.message : 'Unknown error'
@@ -204,7 +203,7 @@ export async function DELETE(
     if (question.author?.username?.toLowerCase() !== currentSanityUser.username?.toLowerCase()) {
       console.log('❌ Ownership check failed');
       return NextResponse.json(
-        { 
+        {
           error: "You can only delete your own questions",
           details: `Author: ${question.author?.username}, Current: ${currentSanityUser.username}`
         },

@@ -1,0 +1,21 @@
+{
+    "HomePage": {
+        "title": "Medical Tourism Forum",
+        "subtitle": "Ask questions, share experiences, and connect with others."
+    },
+    "Navigation": {
+        "home": "Home",
+        "categories": "Categories",
+        "ask": "Ask Question",
+        "profile": "Profile"
+    },
+    "Common": {
+        "loading": "Loading...",
+        "error": "Something went wrong",
+        "save": "Save",
+        "saved": "Saved",
+        "share": "Share",
+        "follow": "Follow",
+        "unfollow": "Unfollow"
+    }
+}

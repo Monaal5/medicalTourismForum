@@ -15,6 +15,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import ShareButton from "@/components/ShareButton";
 import { useVoting } from "@/hooks/useVoting";
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
@@ -63,7 +64,66 @@ export default function QuestionCard({ question }: QuestionCardProps) {
   const [deleting, setDeleting] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [currentSanityUsername, setCurrentSanityUsername] = useState<string | null>(null);
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [bookmarkLoading, setBookmarkLoading] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (user) {
+      checkBookmarkStatus();
+    }
+  }, [user, question._id]);
+
+  const checkBookmarkStatus = async () => {
+    try {
+      const response = await fetch(`/api/bookmarks?userId=${user?.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setIsBookmarked(data.bookmarks.includes(question._id));
+      }
+    } catch (error) {
+      console.error("Error checking bookmark status:", error);
+    }
+  };
+
+  const toggleBookmark = async () => {
+    if (!user) {
+      toast.error("Please sign in to bookmark questions");
+      return;
+    }
+
+    setBookmarkLoading(true);
+    const action = isBookmarked ? "remove" : "add";
+
+    // Optimistic update
+    setIsBookmarked(!isBookmarked);
+
+    try {
+      const response = await fetch("/api/bookmarks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          questionId: question._id,
+          userId: user.id,
+          action,
+        }),
+      });
+
+      if (!response.ok) {
+        // Revert on error
+        setIsBookmarked(isBookmarked);
+        toast.error("Failed to update bookmark");
+      } else {
+        toast.success(action === "add" ? "Question bookmarked" : "Bookmark removed");
+      }
+    } catch (error) {
+      setIsBookmarked(isBookmarked);
+      console.error("Error toggling bookmark:", error);
+      toast.error("Failed to update bookmark");
+    } finally {
+      setBookmarkLoading(false);
+    }
+  };
 
   // Use voting hook for the top answer if it exists
   const {
@@ -160,9 +220,9 @@ export default function QuestionCard({ question }: QuestionCardProps) {
   };
 
   // Check ownership using Sanity usernames
-  const isOwner = currentSanityUsername && question.author.username && 
+  const isOwner = currentSanityUsername && question.author.username &&
     currentSanityUsername.toLowerCase() === question.author.username.toLowerCase();
-  
+
   // Debug logging - only log when values change
   useEffect(() => {
     console.log('QuestionCard Ownership Debug:', {
@@ -193,35 +253,35 @@ export default function QuestionCard({ question }: QuestionCardProps) {
 
   return (
     <div
-      className="bg-white border border-gray-200 rounded-lg p-3 mb-3 hover:shadow-md transition-shadow max-w-xl"
+      className="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 mb-3 hover:shadow-md transition-shadow w-full"
       suppressHydrationWarning
     >
       {/* Question Header */}
-      <div className="flex items-start justify-between mb-2">
-        <div className="flex items-center space-x-2">
-          <Link href={`/profile/${question.author.username}`}>
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center space-x-2 sm:space-x-3 flex-1 min-w-0">
+          <Link href={`/profile/${question.author.username}`} className="flex-shrink-0">
             <Image
               src={question.author.imageUrl || "/default-avatar.png"}
               alt={question.author.username}
-              width={32}
-              height={32}
-              className="rounded-full"
+              width={40}
+              height={40}
+              className="rounded-full w-8 h-8 sm:w-10 sm:h-10"
               unoptimized
             />
           </Link>
-          <div className="flex flex-col">
+          <div className="flex flex-col min-w-0 flex-1">
             <Link
               href={`/profile/${question.author.username}`}
-              className="font-semibold text-xs text-gray-900 hover:text-blue-600 transition-colors"
+              className="font-semibold text-sm sm:text-base text-gray-900 hover:text-blue-600 transition-colors truncate"
             >
               {question.author.username}
             </Link>
-            <div className="flex items-center space-x-1 text-xs text-gray-500">
-              <span>{formatDistanceToNow(new Date(question.createdAt))} ago</span>
+            <div className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm text-gray-500">
+              <span className="truncate">{formatDistanceToNow(new Date(question.createdAt))} ago</span>
               {question.category && (
                 <>
-                  <span>•</span>
-                  <span>{question.category.name}</span>
+                  <span className="hidden sm:inline">•</span>
+                  <span className="hidden sm:inline truncate">{question.category.name}</span>
                 </>
               )}
             </div>
@@ -280,25 +340,26 @@ export default function QuestionCard({ question }: QuestionCardProps) {
 
       {/* Question Title */}
       <Link href={`/question/${question._id}`}>
-        <h2 className="text-sm font-semibold text-gray-900 hover:text-blue-600 transition-colors cursor-pointer mb-1.5 line-clamp-2">
+        <h2 className="text-base sm:text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors cursor-pointer mb-2 line-clamp-3">
           {question.title}
         </h2>
       </Link>
 
       {/* Question Description */}
       {question.description && (
-        <p className="text-gray-600 text-xs mb-2 line-clamp-2">
-          {question.description}
-        </p>
+        <div
+          className="text-gray-600 text-sm sm:text-base mb-3 line-clamp-2 sm:line-clamp-3 prose prose-sm max-w-none [&>p]:mb-0"
+          dangerouslySetInnerHTML={{ __html: question.description }}
+        />
       )}
 
       {/* Tags */}
       {question.tags && question.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-2">
+        <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-3">
           {question.tags.map((tag, index) => (
             <span
               key={index}
-              className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full"
+              className="px-2 py-1 bg-gray-100 text-gray-600 text-xs sm:text-sm rounded-full"
             >
               #{tag}
             </span>
@@ -307,11 +368,30 @@ export default function QuestionCard({ question }: QuestionCardProps) {
       )}
 
       {/* Question Stats */}
-      <div className="flex items-center space-x-3 text-sm text-gray-500 pt-2.5 border-t border-gray-100">
+      <div className="flex items-center space-x-3 sm:space-x-4 text-sm text-gray-500 pt-3 border-t border-gray-100">
         <span className="flex items-center space-x-1.5">
-          <MessageCircle className="w-5 h-5" />
-          <span className="font-medium">{question.answerCount || 0} answers</span>
+          <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+          <span className="font-medium text-xs sm:text-sm">{question.answerCount || 0} answers</span>
         </span>
+      </div>
+
+      <div className="flex items-center space-x-4 sm:space-x-6 pt-3 border-t border-gray-100 mt-3">
+        <button
+          onClick={toggleBookmark}
+          disabled={bookmarkLoading}
+          className={`flex items-center space-x-1.5 hover:text-blue-600 transition-colors text-sm ${isBookmarked ? "text-blue-600" : ""
+            }`}
+          suppressHydrationWarning
+        >
+          <Bookmark className={`w-4 h-4 sm:w-5 sm:h-5 ${isBookmarked ? "fill-current" : ""}`} />
+          <span className="font-medium hidden sm:inline">{isBookmarked ? "Saved" : "Save"}</span>
+        </button>
+        <ShareButton
+          title={question.title}
+          text={question.description}
+          url={`/question/${question._id}`}
+          className="flex items-center space-x-1.5 hover:text-blue-600 transition-colors text-sm"
+        />
       </div>
 
       {/* Top Answer */}

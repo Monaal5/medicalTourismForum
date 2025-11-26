@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     console.log("=== API POST /api/comments ===");
     console.log("Received comment request body:", body);
-    
+
     const {
       comment,
       content,  // For answer comments
@@ -24,14 +24,14 @@ export async function POST(request: NextRequest) {
     const commentText = comment || content;
 
     if (!commentText || (!postId && !answerId) || !userId) {
-      console.log("❌ Missing required fields:", { 
-        commentText: !!commentText, 
-        postId: !!postId, 
-        answerId: !!answerId, 
-        userId: !!userId 
+      console.log("❌ Missing required fields:", {
+        commentText: !!commentText,
+        postId: !!postId,
+        answerId: !!answerId,
+        userId: !!userId
       });
       return NextResponse.json(
-        { 
+        {
           error: "Missing required fields",
           details: "comment/content, (postId or answerId), and userId are required"
         },
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
         `*[_type == "answer" && _id == $answerId && !isDeleted][0]{ _id }`,
         { answerId }
       );
-      
+
       if (!answerExists) {
         console.log("❌ Answer not found:", answerId);
         return NextResponse.json(
@@ -58,14 +58,27 @@ export async function POST(request: NextRequest) {
     }
 
     // Ensure user exists in Sanity
-    console.log("Creating/fetching user in Sanity...");
-    const sanityUser = await addUser({
-      id: userId,
-      username: generateUsername(userFullName || "User", userId),
-      email: userEmail || "user@example.com",
-      imageUrl: userImageUrl || "",
-    });
-    console.log("✓ User created/found:", sanityUser._id);
+    console.log("Fetching/creating user in Sanity...");
+
+    // First, check if user already exists by Clerk ID
+    let sanityUser = await adminClient.fetch(
+      `*[_type == "user" && clerkId == $clerkId][0]`,
+      { clerkId: userId }
+    );
+
+    if (sanityUser) {
+      console.log("✓ Existing user found:", sanityUser._id, "with username:", sanityUser.username);
+    } else {
+      // User doesn't exist, create new one
+      console.log("Creating new user in Sanity...");
+      sanityUser = await addUser({
+        id: userId,
+        username: generateUsername(userFullName || "User", userId),
+        email: userEmail || "user@example.com",
+        imageUrl: userImageUrl || "",
+      });
+      console.log("✓ New user created:", sanityUser._id);
+    }
 
     // Create the comment
     const commentData: any = {
@@ -105,7 +118,7 @@ export async function POST(request: NextRequest) {
     const newComment = await adminClient.create(commentData);
     console.log("✓ Comment created successfully:", newComment._id, 'for', postId ? `post ${postId}` : `answer ${answerId}`);
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
       comment: newComment,
       message: "Comment created successfully"
@@ -114,9 +127,9 @@ export async function POST(request: NextRequest) {
     console.error("❌ Error creating comment:", error);
     console.error("Error details:", error instanceof Error ? error.message : 'Unknown error');
     console.error("Error stack:", error instanceof Error ? error.stack : 'No stack trace');
-    
+
     return NextResponse.json(
-      { 
+      {
         error: "Failed to create comment",
         details: error instanceof Error ? error.message : 'Unknown error'
       },

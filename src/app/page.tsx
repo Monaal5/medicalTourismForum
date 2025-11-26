@@ -3,6 +3,7 @@ import { defineQuery } from "groq";
 import QuestionCard from "@/components/QuestionCard";
 import PostCard from "@/components/PostCard";
 import CategoriesSidebar from "@/components/CategoriesSidebar";
+import TrendingTopics from "@/components/TrendingTopics";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -172,23 +173,28 @@ export default async function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-50" suppressHydrationWarning>
-      <div className="max-w-7xl mx-auto px-4 py-4">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <div className="lg:col-span-1">
-            <CategoriesSidebar />
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
+          {/* Sidebar - Hidden on mobile, shown on desktop */}
+          <div className="hidden lg:block lg:col-span-3">
+            <div className="sticky top-20 space-y-4">
+              <CategoriesSidebar />
+              <TrendingTopics />
+            </div>
           </div>
 
-          <div className="lg:col-span-3">
-            <div className="mb-6">
-              <h1 className="text-2xl font-bold text-gray-900">
+          {/* Main Content */}
+          <div className="lg:col-span-9">
+            <div className="mb-4 sm:mb-6">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
                 Recent Activity
               </h1>
-              <p className="text-gray-600">
+              <p className="text-sm sm:text-base text-gray-600 mt-1">
                 Discover questions, answers, and posts from our community
               </p>
             </div>
 
-            <div className="space-y-4" suppressHydrationWarning>
+            <div className="space-y-3 sm:space-y-4" suppressHydrationWarning>
               {posts.map((post) => (
                 <PostCard key={post._id} post={post} />
               ))}
@@ -201,26 +207,26 @@ export default async function HomePage() {
         </div>
 
         {questions.length === 0 && posts.length === 0 && (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-2xl">❓</span>
+          <div className="text-center py-8 sm:py-12 px-4">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+              <span className="text-xl sm:text-2xl">❓</span>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
               No content yet
             </h3>
-            <p className="text-gray-500 mb-4">
+            <p className="text-sm sm:text-base text-gray-500 mb-4">
               Be the first to ask a question or create a post!
             </p>
-            <div className="flex gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
               <a
                 href="/ask"
-                className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                className="inline-flex items-center justify-center px-4 py-2 bg-red-600 text-white text-sm sm:text-base rounded-md hover:bg-red-700 transition-colors"
               >
                 Ask a Question
               </a>
               <a
                 href="/create-post"
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white text-sm sm:text-base rounded-md hover:bg-blue-700 transition-colors"
               >
                 Create a Post
               </a>

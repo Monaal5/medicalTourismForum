@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import RichTextEditor from "@/components/RichTextEditor";
 import { ArrowLeft, Hash, HelpCircle, Plus } from "lucide-react";
 import Link from "next/link";
 import SignInPrompt from "@/components/SignInPrompt";
@@ -39,27 +40,7 @@ function AskQuestionPageContent() {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [creatingCategory, setCreatingCategory] = useState(false);
 
-  // Show loading while checking auth
-  if (!isLoaded) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  // Show sign-in prompt if user is not authenticated
-  if (!user) {
-    return (
-      <SignInPrompt
-        icon={HelpCircle}
-        title="Sign in to ask a question"
-        description="Join our medical community to ask questions and get expert answers"
-        action="ask questions"
-      />
-    );
-  }
-
+  // All hooks must be called before any conditional returns
   useEffect(() => {
     // Pre-fill title if coming from header
     const queryTitle = searchParams.get("q");
@@ -86,6 +67,27 @@ function AskQuestionPageContent() {
       console.error("Error fetching categories:", error);
     }
   };
+
+  // Show loading while checking auth
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  // Show sign-in prompt if user is not authenticated
+  if (!user) {
+    return (
+      <SignInPrompt
+        icon={HelpCircle}
+        title="Sign in to ask a question"
+        description="Join our medical community to ask questions and get expert answers"
+        action="ask questions"
+      />
+    );
+  }
 
   const handleCreateCategory = async () => {
     if (!newCategoryName.trim() || !user) return;
@@ -231,13 +233,10 @@ function AskQuestionPageContent() {
               >
                 Add more details (optional)
               </Label>
-              <Textarea
-                id="description"
-                placeholder="Provide additional context, background, or details"
+              <RichTextEditor
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={4}
-                className="mt-2"
+                onChange={setDescription}
+                placeholder="Provide additional context, background, or details"
               />
             </div>
 

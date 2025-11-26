@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Heart, Mail, Phone, MapPin } from "lucide-react";
+import NewsletterSignup from "@/components/NewsletterSignup";
 
 export default function Footer() {
   return (
@@ -10,12 +11,15 @@ export default function Footer() {
           <div className="col-span-1 md:col-span-2">
             <h3 className="text-lg font-semibold mb-4">Medical Tourism Forum</h3>
             <p className="text-gray-300 mb-4">
-              Connect with healthcare professionals and patients worldwide. 
+              Connect with healthcare professionals and patients worldwide.
               Share knowledge, ask questions, and find the best medical tourism options.
             </p>
             <div className="flex items-center space-x-2 text-gray-300">
               <Heart className="w-4 h-4 text-red-500" />
               <span>Made with care for the medical community</span>
+            </div>
+            <div className="mt-6">
+              <NewsletterSignup />
             </div>
           </div>
 

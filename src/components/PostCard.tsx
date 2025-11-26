@@ -150,9 +150,9 @@ export default function PostCard({ post }: PostCardProps) {
   };
 
   // Check ownership using Sanity usernames
-  const isOwner = currentSanityUsername && post.author.username && 
+  const isOwner = currentSanityUsername && post.author.username &&
     currentSanityUsername.toLowerCase() === post.author.username.toLowerCase();
-  
+
   // Debug logging - only log when values change
   useEffect(() => {
     console.log('PostCard Ownership Debug:', {
@@ -165,43 +165,43 @@ export default function PostCard({ post }: PostCardProps) {
 
   return (
     <div
-      className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden max-w-xl"
+      className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden w-full"
       suppressHydrationWarning
     >
       {/* Post Header */}
-      <div className="px-3 pt-3 pb-2">
-        <div className="flex items-start justify-between mb-2">
-          <div className="flex items-center space-x-2">
-            <Link href={`/profile/${post.author.username}`}>
+      <div className="px-4 sm:px-6 pt-4 pb-3">
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center space-x-2 sm:space-x-3 flex-1 min-w-0">
+            <Link href={`/profile/${post.author.username}`} className="flex-shrink-0">
               <Image
                 src={
                   post.author.imageUrl ||
                   "https://via.placeholder.com/40x40/cccccc/666666?text=U"
                 }
                 alt={post.author.username}
-                width={32}
-                height={32}
-                className="rounded-full"
+                width={40}
+                height={40}
+                className="rounded-full w-8 h-8 sm:w-10 sm:h-10"
                 unoptimized
               />
             </Link>
-            <div className="flex flex-col">
+            <div className="flex flex-col min-w-0 flex-1">
               <Link
                 href={`/profile/${post.author.username}`}
-                className="font-semibold text-xs text-gray-900 hover:text-blue-600 transition-colors"
+                className="font-semibold text-sm sm:text-base text-gray-900 hover:text-blue-600 transition-colors truncate"
               >
                 {post.author.username}
               </Link>
-              <div className="flex items-center space-x-1 text-xs text-gray-500">
-                <span>
+              <div className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm text-gray-500">
+                <span className="truncate">
                   {formatDistanceToNow(new Date(post.publishedAt), {
                     addSuffix: true,
                   })}
                 </span>
-                <span>•</span>
+                <span className="hidden sm:inline">•</span>
                 <Link
                   href={`/community/${post.subreddit.slug.current}`}
-                  className="hover:underline"
+                  className="hover:underline hidden sm:inline truncate"
                 >
                   c/{post.subreddit.title}
                 </Link>
@@ -211,7 +211,7 @@ export default function PostCard({ post }: PostCardProps) {
 
           {/* Three-dot menu */}
           {user && (
-            <div className="relative" ref={menuRef}>
+            <div className="relative flex-shrink-0" ref={menuRef}>
               <button
                 onClick={() => {
                   console.log('=== DELETE MENU CLICKED ===');
@@ -253,16 +253,16 @@ export default function PostCard({ post }: PostCardProps) {
 
         {/* Post Title */}
         <Link href={`/post/${post._id}`}>
-          <h2 className="text-sm font-semibold text-gray-900 mb-1.5 hover:text-blue-600 cursor-pointer transition-colors line-clamp-2">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 hover:text-blue-600 cursor-pointer transition-colors line-clamp-3">
             {post.postTitle}
           </h2>
         </Link>
 
         {/* Post Body */}
         {post.body && (
-          <div className="text-gray-700 text-xs mb-2 line-clamp-2">
+          <div className="text-gray-700 text-sm sm:text-base mb-3 line-clamp-2 sm:line-clamp-3">
             {post.body.map((block: any, index: number) => (
-              <p key={index} className="mb-0.5">
+              <p key={index} className="mb-1">
                 {block.children
                   ?.map((child: any, childIndex: number) => child.text)
                   .join("")}
@@ -274,7 +274,7 @@ export default function PostCard({ post }: PostCardProps) {
 
       {/* Post Image */}
       {post.image && (
-        <div className="px-3 pb-2">
+        <div className="px-4 sm:px-6 pb-3">
           <Image
             src={urlFor(post.image).width(600).height(400).url()}
             alt={post.image.alt || "Post image"}
@@ -287,55 +287,53 @@ export default function PostCard({ post }: PostCardProps) {
       )}
 
       {/* Voting and Actions Bar */}
-      <div className="border-t border-gray-100 px-3 py-3">
+      <div className="border-t border-gray-100 px-4 sm:px-6 py-3">
         <div className="flex items-center justify-between text-sm">
           {/* Vote Controls */}
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1 sm:space-x-2">
             <button
               onClick={() => handleVote("upvote")}
               disabled={!canVote || loading}
-              className={`p-2 rounded-full transition-colors ${
-                userVote === "upvote"
+              className={`p-1.5 sm:p-2 rounded-full transition-colors ${userVote === "upvote"
                   ? "text-orange-500 bg-orange-50"
                   : "text-gray-500 hover:bg-gray-100"
-              } ${!canVote || loading ? "opacity-50 cursor-not-allowed" : ""}`}
+                } ${!canVote || loading ? "opacity-50 cursor-not-allowed" : ""}`}
               suppressHydrationWarning
             >
-              <ThumbsUp className="w-5 h-5" />
+              <ThumbsUp className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
-            <span className="text-sm font-semibold text-gray-700 min-w-[28px] text-center">
+            <span className="text-xs sm:text-sm font-semibold text-gray-700 min-w-[24px] sm:min-w-[28px] text-center">
               {voteCount}
             </span>
             <button
               onClick={() => handleVote("downvote")}
               disabled={!canVote || loading}
-              className={`p-2 rounded-full transition-colors ${
-                userVote === "downvote"
+              className={`p-1.5 sm:p-2 rounded-full transition-colors ${userVote === "downvote"
                   ? "text-blue-500 bg-blue-50"
                   : "text-gray-500 hover:bg-gray-100"
-              } ${!canVote || loading ? "opacity-50 cursor-not-allowed" : ""}`}
+                } ${!canVote || loading ? "opacity-50 cursor-not-allowed" : ""}`}
               suppressHydrationWarning
             >
-              <ThumbsDown className="w-5 h-5" />
+              <ThumbsDown className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center space-x-4 text-gray-500">
+          <div className="flex items-center space-x-3 sm:space-x-4 text-gray-500">
             <Link
               href={`/post/${post._id}`}
-              className="flex items-center space-x-1.5 hover:text-gray-700 transition-colors"
+              className="flex items-center space-x-1 sm:space-x-1.5 hover:text-gray-700 transition-colors"
               suppressHydrationWarning
             >
-              <MessageCircle className="w-5 h-5" />
-              <span className="font-medium">{post.commentCount || 0}</span>
+              <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="font-medium text-xs sm:text-sm">{post.commentCount || 0}</span>
             </Link>
             <button
-              className="flex items-center space-x-1.5 hover:text-gray-700 transition-colors"
+              className="flex items-center space-x-1 sm:space-x-1.5 hover:text-gray-700 transition-colors"
               suppressHydrationWarning
             >
-              <Share className="w-5 h-5" />
-              <span className="hidden sm:inline font-medium">Share</span>
+              <Share className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="hidden sm:inline font-medium text-xs sm:text-sm">Share</span>
             </button>
           </div>
         </div>

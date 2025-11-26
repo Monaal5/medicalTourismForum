@@ -116,6 +116,7 @@
     * {
         @apply border-border outline-ring/50;
     }
+
     body {
         @apply bg-background text-foreground;
     }
@@ -123,6 +124,7 @@
 
 /* Prevent browser extension interference and hydration issues */
 @layer utilities {
+
     /* Hide attributes added by browser extensions that cause hydration mismatches */
     [fdprocessedid],
     [data-lastpass-icon-root],
@@ -156,4 +158,111 @@
     [role="button"] {
         position: relative;
     }
+}
+
+/* Tiptap Editor Styles */
+.ProseMirror {
+    outline: none;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+    color: #adb5bd;
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+}
+
+.ProseMirror h1 {
+    font-size: 2em;
+    font-weight: bold;
+    margin-top: 0.67em;
+    margin-bottom: 0.67em;
+}
+
+.ProseMirror h2 {
+    font-size: 1.5em;
+    font-weight: bold;
+    margin-top: 0.83em;
+    margin-bottom: 0.83em;
+}
+
+.ProseMirror h3 {
+    font-size: 1.17em;
+    font-weight: bold;
+    margin-top: 1em;
+    margin-bottom: 1em;
+}
+
+.ProseMirror ul,
+.ProseMirror ol {
+    padding-left: 1.5rem;
+    margin: 1em 0;
+}
+
+.ProseMirror ul {
+    list-style-type: disc;
+}
+
+.ProseMirror ol {
+    list-style-type: decimal;
+}
+
+.ProseMirror blockquote {
+    border-left: 3px solid #cbd5e0;
+    padding-left: 1rem;
+    margin: 1rem 0;
+    color: #4a5568;
+}
+
+.ProseMirror code {
+    background-color: #f7fafc;
+    border-radius: 0.25rem;
+    padding: 0.125rem 0.25rem;
+    font-family: monospace;
+    font-size: 0.875em;
+}
+
+.ProseMirror pre {
+    background-color: #2d3748;
+    color: #f7fafc;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin: 1rem 0;
+    overflow-x: auto;
+}
+
+.ProseMirror pre code {
+    background: none;
+    color: inherit;
+    padding: 0;
+}
+
+.ProseMirror p {
+    margin: 0.5em 0;
+}
+
+.ProseMirror strong {
+    font-weight: bold;
+}
+
+.ProseMirror em {
+    font-style: italic;
+}
+
+/* Notification Toast Animation */
+@keyframes slide-in {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.animate-slide-in {
+    animation: slide-in 0.3s ease-out;
 }

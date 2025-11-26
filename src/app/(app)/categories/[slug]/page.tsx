@@ -66,28 +66,47 @@ export default function CategoryPage() {
       setLoading(true);
       setError(null);
 
+      console.log("=== CATEGORY PAGE ===");
+      console.log("Fetching category with slug:", slug);
+
       // Fetch category details
       const categoryResponse = await fetch("/api/categories");
+      console.log("Categories API response status:", categoryResponse.status);
+
       if (categoryResponse.ok) {
         const categoryData = await categoryResponse.json();
+        console.log("All categories:", categoryData.categories?.map((c: Category) => ({ name: c.name, slug: c.slug, id: c._id })));
+
         const foundCategory = categoryData.categories?.find(
           (cat: Category) => cat.slug === slug
         );
+
+        console.log("Found category:", foundCategory);
 
         if (foundCategory) {
           setCategory(foundCategory);
 
           // Fetch questions for this category
-          const questionsResponse = await fetch(
-            `/api/questions?category=${foundCategory._id}`
-          );
+          const questionsUrl = `/api/questions?category=${foundCategory._id}`;
+          console.log("Fetching questions from:", questionsUrl);
+
+          const questionsResponse = await fetch(questionsUrl);
+          console.log("Questions API response status:", questionsResponse.status);
+
           if (questionsResponse.ok) {
             const questionsData = await questionsResponse.json();
+            console.log("Questions data:", questionsData);
+            console.log("Questions count:", questionsData.questions?.length || 0);
             setQuestions(questionsData.questions || []);
+          } else {
+            console.error("Failed to fetch questions:", await questionsResponse.text());
           }
         } else {
+          console.error("Category not found with slug:", slug);
           setError("Category not found");
         }
+      } else {
+        console.error("Failed to fetch categories:", await categoryResponse.text());
       }
     } catch (error) {
       console.error("Error fetching category:", error);

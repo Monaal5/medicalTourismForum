@@ -163,7 +163,7 @@ export default function QuestionDetailPage({
       if (questionMenuRef.current && !questionMenuRef.current.contains(event.target as Node)) {
         setShowQuestionMenu(false);
       }
-      
+
       // Check answer menus
       Object.entries(answerMenuRefs.current).forEach(([answerId, ref]) => {
         if (ref && !ref.contains(event.target as Node)) {
@@ -188,14 +188,14 @@ export default function QuestionDetailPage({
       setLoading(true);
       setError(null); // Clear previous errors
       console.log('Fetching question:', questionId);
-      
+
       const response = await fetch(`/api/questions/${questionId}`, {
         cache: 'no-store', // Prevent caching issues
       });
 
       console.log('Response status:', response.status);
       console.log('Response ok:', response.ok);
-      
+
       if (!response.ok) {
         let errorData;
         try {
@@ -212,14 +212,14 @@ export default function QuestionDetailPage({
 
       const text = await response.text();
       console.log('Response text length:', text.length);
-      
+
       if (!text) {
         throw new Error('Empty response from server');
       }
-      
+
       const data = JSON.parse(text);
       console.log('Question data received, success:', data.success);
-      
+
       if (data.success && data.question) {
         setQuestion(data.question);
         setError(null);
@@ -293,21 +293,65 @@ export default function QuestionDetailPage({
   const handleBookmark = async () => {
     if (!user || !question) return;
 
+    const action = question.isBookmarked ? "remove" : "add";
+
+    // Optimistic update
+    setQuestion({
+      ...question,
+      isBookmarked: !question.isBookmarked,
+    });
+
     try {
-      const response = await fetch(`/api/questions/${questionId}/bookmark`, {
+      const response = await fetch("/api/bookmarks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.id }),
+        body: JSON.stringify({
+          questionId: question._id,
+          userId: user.id,
+          action,
+        }),
       });
 
-      if (response.ok) {
+      if (!response.ok) {
+        // Revert on error
         setQuestion({
           ...question,
-          isBookmarked: !question.isBookmarked,
+          isBookmarked: question.isBookmarked,
         });
       }
     } catch (error) {
       console.error("Error bookmarking question:", error);
+      // Revert on error
+      setQuestion({
+        ...question,
+        isBookmarked: question.isBookmarked,
+      });
+    }
+  };
+
+  const handleShare = async () => {
+    const url = `${window.location.origin}/question/${questionId}`;
+    const title = question?.title || "Check out this question";
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title,
+          text: question?.description || "",
+          url,
+        });
+      } catch (error) {
+        // User cancelled or error occurred
+        console.log("Share cancelled");
+      }
+    } else {
+      // Fallback: copy to clipboard
+      try {
+        await navigator.clipboard.writeText(url);
+        alert("Link copied to clipboard!");
+      } catch (error) {
+        console.error("Error copying to clipboard:", error);
+      }
     }
   };
 
@@ -317,7 +361,7 @@ export default function QuestionDetailPage({
     try {
       setSubmittingAnswer(true);
       console.log('Submitting answer...');
-      
+
       const response = await fetch("/api/answers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -336,14 +380,14 @@ export default function QuestionDetailPage({
       if (response.ok) {
         const result = await response.json();
         console.log('Answer created successfully:', result);
-        
+
         setNewAnswer("");
         setShowAnswerForm(false);
-        
+
         // Wait a bit longer for Sanity to process
         console.log('Waiting for Sanity to process...');
         await new Promise(resolve => setTimeout(resolve, 1000));
-        
+
         console.log('Refreshing question data...');
         await fetchQuestion(); // Refresh to show new answer
         router.refresh(); // Force page refresh
@@ -365,7 +409,7 @@ export default function QuestionDetailPage({
 
     try {
       console.log('Submitting comment...');
-      
+
       const response = await fetch("/api/comments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -384,13 +428,13 @@ export default function QuestionDetailPage({
       if (response.ok) {
         const result = await response.json();
         console.log('Comment created successfully:', result);
-        
+
         setNewComment({ ...newComment, [answerId]: "" });
-        
+
         // Wait for Sanity to process
         console.log('Waiting for Sanity to process...');
         await new Promise(resolve => setTimeout(resolve, 1000));
-        
+
         console.log('Refreshing question data...');
         await fetchQuestion(); // Refresh to show new comment
         router.refresh();
@@ -465,7 +509,7 @@ export default function QuestionDetailPage({
 
   const getCategoryColor = (color: string | null) => {
     if (!color) return "bg-blue-100 text-blue-800";
-    
+
     const colors = {
       blue: "bg-blue-100 text-blue-800",
       green: "bg-green-100 text-green-800",
@@ -568,9 +612,10 @@ export default function QuestionDetailPage({
 
           {/* Question Description */}
           {question.description && (
-            <div className="text-gray-700 mb-6 text-lg leading-relaxed">
-              {question.description}
-            </div>
+            <div
+              className="text-gray-700 mb-6 text-lg leading-relaxed prose max-w-none"
+              dangerouslySetInnerHTML={{ __html: question.description }}
+            />
           )}
 
           {/* Author and Meta Info */}
@@ -639,30 +684,16 @@ export default function QuestionDetailPage({
             )}
           </div>
 
+
           {/* Action Buttons */}
           <div className="flex items-center flex-wrap gap-2 mt-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleFollow}
-              className={
-                question.isFollowing
-                  ? "bg-blue-50 border-blue-200 text-blue-700"
-                  : ""
-              }
-            >
-              <Users className="w-4 h-4 mr-1" />
-              <span className="hidden sm:inline">{question.isFollowing ? "Following" : "Follow"}</span>
-              {question.followerCount ? ` (${question.followerCount})` : ""}
-            </Button>
-
             <Button variant="outline" size="sm" onClick={handleBookmark}>
               <Bookmark
                 className={`w-4 h-4 ${question.isBookmarked ? "fill-current text-blue-600" : ""}`}
               />
             </Button>
 
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={handleShare}>
               <Share className="w-4 h-4" />
             </Button>
           </div>
@@ -768,6 +799,7 @@ export default function QuestionDetailPage({
                     )
                   }
                   className="text-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  suppressHydrationWarning
                 >
                   <option value="relevance">Most Relevant</option>
                   <option value="newest">Newest First</option>
@@ -790,11 +822,10 @@ export default function QuestionDetailPage({
                           handleVote(answer._id, "answer", "upvote")
                         }
                         disabled={!user}
-                        className={`p-1 rounded ${
-                          answer.userVote === "upvote"
-                            ? "text-orange-500 bg-orange-50"
-                            : "text-gray-500 hover:bg-gray-100"
-                        } ${!user ? "opacity-50 cursor-not-allowed" : ""}`}
+                        className={`p-1 rounded ${answer.userVote === "upvote"
+                          ? "text-orange-500 bg-orange-50"
+                          : "text-gray-500 hover:bg-gray-100"
+                          } ${!user ? "opacity-50 cursor-not-allowed" : ""}`}
                       >
                         <ArrowUp className="w-5 h-5" />
                       </button>
@@ -806,11 +837,10 @@ export default function QuestionDetailPage({
                           handleVote(answer._id, "answer", "downvote")
                         }
                         disabled={!user}
-                        className={`p-1 rounded ${
-                          answer.userVote === "downvote"
-                            ? "text-blue-500 bg-blue-50"
-                            : "text-gray-500 hover:bg-gray-100"
-                        } ${!user ? "opacity-50 cursor-not-allowed" : ""}`}
+                        className={`p-1 rounded ${answer.userVote === "downvote"
+                          ? "text-blue-500 bg-blue-50"
+                          : "text-gray-500 hover:bg-gray-100"
+                          } ${!user ? "opacity-50 cursor-not-allowed" : ""}`}
                       >
                         <ArrowDown className="w-5 h-5" />
                       </button>
@@ -868,11 +898,11 @@ export default function QuestionDetailPage({
                             <span className="hidden sm:inline">{answer.commentCount || 0} Comments</span>
                             <span className="sm:hidden">{answer.commentCount || 0}</span>
                           </Button>
-                          
+
                           {/* Three-dot menu for answer owner */}
                           {user && answer.author && isLoaded && (
-                            <div 
-                              className="relative" 
+                            <div
+                              className="relative"
                               ref={(el) => {
                                 if (el) answerMenuRefs.current[answer._id] = el;
                               }}
@@ -915,7 +945,7 @@ export default function QuestionDetailPage({
                               )}
                             </div>
                           )}
-                          
+
                           <Button variant="ghost" size="sm">
                             <Share className="w-4 h-4" />
                           </Button>

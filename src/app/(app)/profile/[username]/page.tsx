@@ -12,6 +12,10 @@ interface UserProfile {
   joinedAt: string | null;
   questionsCount?: number;
   answersCount?: number;
+  followersCount?: number;
+  followingCount?: number;
+  followers?: Array<{ _id: string; username: string; imageUrl: string }>;
+  following?: Array<{ _id: string; username: string; imageUrl: string }>;
 }
 
 interface UserQuestion {
@@ -22,14 +26,14 @@ interface UserQuestion {
   category: {
     name: string | null;
     color:
-      | "blue"
-      | "red"
-      | "pink"
-      | "orange"
-      | "green"
-      | "purple"
-      | "gray"
-      | null;
+    | "blue"
+    | "red"
+    | "pink"
+    | "orange"
+    | "green"
+    | "purple"
+    | "gray"
+    | null;
   } | null;
 }
 
@@ -74,7 +78,11 @@ const userQuery = defineQuery(`
     joinedAt,
     "questionsCount": count(*[_type == "question" && author._ref == ^._id && !isDeleted]),
     "answersCount": count(*[_type == "answer" && author._ref == ^._id && !isDeleted]),
-    "postsCount": count(*[_type == "post" && author._ref == ^._id && !isDeleted])
+    "postsCount": count(*[_type == "post" && author._ref == ^._id && !isDeleted]),
+    "followersCount": count(coalesce(followers, [])),
+    "followingCount": count(coalesce(following, [])),
+    "followers": coalesce(followers, [])[]->{ _id, username, imageUrl },
+    "following": coalesce(following, [])[]->{ _id, username, imageUrl }
   }
 `);
 
@@ -146,7 +154,11 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
           joinedAt,
           "questionsCount": count(*[_type == "question" && author._ref == ^._id && !isDeleted]),
           "answersCount": count(*[_type == "answer" && author._ref == ^._id && !isDeleted]),
-          "postsCount": count(*[_type == "post" && author._ref == ^._id && !isDeleted])
+          "postsCount": count(*[_type == "post" && author._ref == ^._id && !isDeleted]),
+          "followersCount": count(coalesce(followers, [])),
+          "followingCount": count(coalesce(following, [])),
+          "followers": coalesce(followers, [])[]->{ _id, username, imageUrl },
+          "following": coalesce(following, [])[]->{ _id, username, imageUrl }
         }
       `);
 
@@ -160,6 +172,12 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
 
     if (userResult.data) {
       user = userResult.data;
+
+      console.log("=== FOLLOWERS/FOLLOWING DATA ===");
+      console.log("Followers count:", user.followersCount);
+      console.log("Following count:", user.followingCount);
+      console.log("Followers array:", user.followers);
+      console.log("Following array:", user.following);
 
       // Fetch user questions
       const questionsResult = await sanityFetch({

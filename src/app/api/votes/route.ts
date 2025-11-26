@@ -25,12 +25,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Ensure user exists in Sanity
-    const sanityUser = await addUser({
-      id: userId,
-      username: generateUsername(userFullName || "User", userId),
-      email: userEmail || "user@example.com",
-      imageUrl: userImageUrl || "",
-    });
+    // First, check if user already exists by Clerk ID
+    let sanityUser = await adminClient.fetch(
+      `*[_type == "user" && clerkId == $clerkId][0]`,
+      { clerkId: userId }
+    );
+
+    if (!sanityUser) {
+      // User doesn't exist, create new one
+      sanityUser = await addUser({
+        id: userId,
+        username: generateUsername(userFullName || "User", userId),
+        email: userEmail || "user@example.com",
+        imageUrl: userImageUrl || "",
+      });
+    }
 
     // Check if user already voted on this target
     const existingVoteQuery = defineQuery(`

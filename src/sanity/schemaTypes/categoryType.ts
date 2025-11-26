@@ -9,7 +9,25 @@ export const categoryType = defineType({
       name: "name",
       title: "Category Name",
       type: "string",
-      validation: (Rule) => Rule.required().min(2).max(50),
+      validation: (Rule) =>
+        Rule.required()
+          .min(2)
+          .max(50)
+          .custom(async (name, context) => {
+            if (!name) return true;
+
+            const { document, getClient } = context;
+            const client = getClient({ apiVersion: '2023-01-01' });
+
+            // Check if another category with the same name exists
+            const query = `count(*[_type == "category" && lower(name) == lower($name) && _id != $id])`;
+            const count = await client.fetch(query, {
+              name,
+              id: document?._id || '',
+            });
+
+            return count === 0 || 'A category with this name already exists';
+          }),
     }),
     defineField({
       name: "slug",
@@ -18,6 +36,19 @@ export const categoryType = defineType({
       options: {
         source: "name",
         maxLength: 96,
+        isUnique: async (slug, context) => {
+          const { document, getClient } = context;
+          const client = getClient({ apiVersion: '2023-01-01' });
+
+          // Check if another category with the same slug exists
+          const query = `count(*[_type == "category" && slug.current == $slug && _id != $id])`;
+          const count = await client.fetch(query, {
+            slug,
+            id: document?._id || '',
+          });
+
+          return count === 0;
+        },
       },
       validation: (Rule) => Rule.required(),
     }),

@@ -10,19 +10,23 @@ export async function GET(request: Request) {
     const category = searchParams.get("category");
     const unanswered = searchParams.get("unanswered");
 
-    let query = `*[_type == "question" && !isDeleted]`;
+    console.log("=== QUESTIONS API GET ===");
+    console.log("Category filter:", category);
+    console.log("Unanswered filter:", unanswered);
+
+    let filters = [`_type == "question"`, `!isDeleted`];
 
     // Filter by category if provided
     if (category) {
-      query += ` && category._ref == "${category}"`;
+      filters.push(`category._ref == "${category}"`);
     }
 
     // Filter for unanswered questions if requested
     if (unanswered === "true") {
-      query += ` && count(*[_type == "answer" && references(^._id) && !isDeleted]) == 0`;
+      filters.push(`count(*[_type == "answer" && references(^._id) && !isDeleted]) == 0`);
     }
 
-    query += ` | order(createdAt desc) [0...50] {
+    const query = `*[${filters.join(" && ")}] | order(createdAt desc) [0...50] {
       _id,
       title,
       description,
@@ -32,14 +36,19 @@ export async function GET(request: Request) {
       },
       category->{
         name,
-        color
+        color,
+        icon
       },
+      tags,
       createdAt,
       "answerCount": count(*[_type == "answer" && references(^._id) && !isDeleted]),
       isAnswered
     }`;
 
+    console.log("Final query:", query);
+
     const questions = await adminClient.fetch(query);
+    console.log("Questions found:", questions?.length || 0);
 
     return NextResponse.json({
       success: true,
@@ -83,14 +92,27 @@ export async function POST(request: Request) {
     }
 
     // Ensure user exists in Sanity
-    console.log("Creating user in Sanity...");
-    const sanityUser = await addUser({
-      id: userId,
-      username: generateUsername(userFullName || "User", userId),
-      email: userEmail || "user@example.com",
-      imageUrl: userImageUrl || "",
-    });
-    console.log("User created:", sanityUser._id);
+    console.log("Fetching/creating user in Sanity...");
+
+    // First, check if user already exists by Clerk ID
+    let sanityUser = await adminClient.fetch(
+      `*[_type == "user" && clerkId == $clerkId][0]`,
+      { clerkId: userId }
+    );
+
+    if (sanityUser) {
+      console.log("✓ Existing user found:", sanityUser._id, "with username:", sanityUser.username);
+    } else {
+      // User doesn't exist, create new one
+      console.log("Creating new user in Sanity...");
+      sanityUser = await addUser({
+        id: userId,
+        username: generateUsername(userFullName || "User", userId),
+        email: userEmail || "user@example.com",
+        imageUrl: userImageUrl || "",
+      });
+      console.log("✓ New user created:", sanityUser._id);
+    }
 
     // Create the question
     const questionData: any = {

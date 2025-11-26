@@ -1,0 +1,21 @@
+{
+    "HomePage": {
+        "title": "Foro de Turismo Médico",
+        "subtitle": "Haz preguntas, comparte experiencias y conéctate con otros."
+    },
+    "Navigation": {
+        "home": "Inicio",
+        "categories": "Categorías",
+        "ask": "Hacer Pregunta",
+        "profile": "Perfil"
+    },
+    "Common": {
+        "loading": "Cargando...",
+        "error": "Algo salió mal",
+        "save": "Guardar",
+        "saved": "Guardado",
+        "share": "Compartir",
+        "follow": "Seguir",
+        "unfollow": "Dejar de seguir"
+    }
+}

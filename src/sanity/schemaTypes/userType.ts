@@ -27,6 +27,18 @@ export const userType = defineType({
       description: "users clerk user profile image",
     }),
     defineField({
+      name: "clerkId",
+      title: "Clerk ID",
+      type: "string",
+      description: "Clerk authentication user ID",
+    }),
+    defineField({
+      name: "bio",
+      title: "Bio",
+      type: "text",
+      description: "User biography",
+    }),
+    defineField({
       name: "joinedAt",
       title: "Joined At",
       type: "datetime",
@@ -40,6 +52,27 @@ export const userType = defineType({
       type: "boolean",
       initialValue: false,
       description: "Whether this user has been reported",
+    }),
+    defineField({
+      name: "bookmarks",
+      title: "Bookmarks",
+      type: "array",
+      of: [{ type: "reference", to: [{ type: "question" }] }],
+      description: "Questions bookmarked by the user",
+    }),
+    defineField({
+      name: "followers",
+      title: "Followers",
+      type: "array",
+      of: [{ type: "reference", to: [{ type: "user" }] }],
+      description: "Users following this user",
+    }),
+    defineField({
+      name: "following",
+      title: "Following",
+      type: "array",
+      of: [{ type: "reference", to: [{ type: "user" }] }],
+      description: "Users this user is following",
     }),
   ],
   preview: {

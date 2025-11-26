@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   // 👇 Add this to enable static export
   // output: 'export', // Only for static export, not needed for Vercel deployment
   // basePath: '/your-base-path', // Uncomment and set if deploying to a subdirectory
-     
+
   // 👇 Add this if you're using <Image /> component
   images: {
     unoptimized: true,

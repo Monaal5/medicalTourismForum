@@ -336,11 +336,11 @@ export default function HelpDialog({ children }: HelpDialogProps) {
                   <button
                     key={section.id}
                     onClick={() => setActiveSection(section.id)}
-                    className={`w-full flex items-center space-x-3 px-3 py-2 text-left rounded-lg transition-colors ${
-                      activeSection === section.id
+                    className={`w-full flex items-center space-x-3 px-3 py-2 text-left rounded-lg transition-colors ${activeSection === section.id
                         ? "bg-blue-50 text-blue-700 border border-blue-200"
                         : "text-gray-700 hover:bg-gray-50"
-                    }`}
+                      }`}
+                    suppressHydrationWarning
                   >
                     <Icon className="w-4 h-4" />
                     <span className="text-sm font-medium">{section.title}</span>

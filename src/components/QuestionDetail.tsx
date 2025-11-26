@@ -2,11 +2,11 @@
 import { useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { formatDistanceToNow } from "date-fns";
-import { 
-  ArrowUp, 
-  ArrowDown, 
-  MessageCircle, 
-  Share, 
+import {
+  ArrowUp,
+  ArrowDown,
+  MessageCircle,
+  Share,
   Bookmark,
   MoreHorizontal,
   CheckCircle,
@@ -133,21 +133,22 @@ export default function QuestionDetail({ question, answers }: QuestionDetailProp
                   </span>
                 )}
               </div>
-              
+
               <h1 className="text-2xl font-bold text-gray-900 mb-4">
                 {question.title}
               </h1>
-              
+
               {question.description && (
-                <p className="text-gray-700 mb-4 leading-relaxed">
-                  {question.description}
-                </p>
+                <div
+                  className="text-gray-700 mb-4 leading-relaxed prose max-w-none"
+                  dangerouslySetInnerHTML={{ __html: question.description }}
+                />
               )}
-              
+
               {question.tags && question.tags.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-4">
                   {question.tags.map((tag, index) => (
-                    <span 
+                    <span
                       key={index}
                       className="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-600 text-sm rounded-full"
                     >
@@ -158,7 +159,7 @@ export default function QuestionDetail({ question, answers }: QuestionDetailProp
                 </div>
               )}
             </div>
-            
+
             <Button variant="ghost" size="sm" suppressHydrationWarning>
               <MoreHorizontal className="w-4 h-4" />
             </Button>
@@ -185,7 +186,7 @@ export default function QuestionDetail({ question, answers }: QuestionDetailProp
                 </div>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-4 text-sm text-gray-500" suppressHydrationWarning>
               <span>{question.answerCount || 0} answers</span>
               <button className="flex items-center space-x-1 hover:text-gray-700" suppressHydrationWarning>
@@ -231,11 +232,11 @@ export default function QuestionDetail({ question, answers }: QuestionDetailProp
           <h3 className="text-lg font-semibold text-gray-900">
             {answers.length} {answers.length === 1 ? 'Answer' : 'Answers'}
           </h3>
-          
+
           {answers.map((answer) => (
             <AnswerCard key={answer._id} answer={answer} />
           ))}
-          
+
           {answers.length === 0 && (
             <div className="text-center py-8 bg-white rounded-lg border border-gray-200">
               <MessageCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -250,12 +251,12 @@ export default function QuestionDetail({ question, answers }: QuestionDetailProp
 
 function AnswerCard({ answer }: { answer: Answer }) {
   const { user } = useUser();
-  const { 
-    voteCount, 
-    userVote, 
-    loading, 
-    vote, 
-    canVote 
+  const {
+    voteCount,
+    userVote,
+    loading,
+    vote,
+    canVote
   } = useVoting(answer._id, 'answer');
 
   const handleVote = (voteType: 'upvote' | 'downvote') => {
@@ -272,11 +273,10 @@ function AnswerCard({ answer }: { answer: Answer }) {
           <button
             onClick={() => handleVote('upvote')}
             disabled={!canVote || loading}
-            className={`p-2 rounded-full ${
-              userVote === 'upvote' 
-                ? 'text-orange-500 bg-orange-50' 
+            className={`p-2 rounded-full ${userVote === 'upvote'
+                ? 'text-orange-500 bg-orange-50'
                 : 'text-gray-500 hover:bg-gray-100'
-            } ${!canVote || loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              } ${!canVote || loading ? 'opacity-50 cursor-not-allowed' : ''}`}
             suppressHydrationWarning
           >
             <ArrowUp className="w-5 h-5" />
@@ -287,11 +287,10 @@ function AnswerCard({ answer }: { answer: Answer }) {
           <button
             onClick={() => handleVote('downvote')}
             disabled={!canVote || loading}
-            className={`p-2 rounded-full ${
-              userVote === 'downvote' 
-                ? 'text-blue-500 bg-blue-50' 
+            className={`p-2 rounded-full ${userVote === 'downvote'
+                ? 'text-blue-500 bg-blue-50'
                 : 'text-gray-500 hover:bg-gray-100'
-            } ${!canVote || loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              } ${!canVote || loading ? 'opacity-50 cursor-not-allowed' : ''}`}
             suppressHydrationWarning
           >
             <ArrowDown className="w-5 h-5" />
@@ -315,13 +314,13 @@ function AnswerCard({ answer }: { answer: Answer }) {
               {formatDistanceToNow(new Date(answer.createdAt))} ago
             </span>
           </div>
-          
+
           <div className="text-gray-800 mb-4">
             <p className="whitespace-pre-wrap">
               {answer.content?.[0]?.children?.[0]?.text || "Answer content..."}
             </p>
           </div>
-          
+
           <div className="flex items-center space-x-4 text-sm text-gray-500" suppressHydrationWarning>
             <button className="flex items-center space-x-1 hover:text-gray-700" suppressHydrationWarning>
               <MessageCircle className="w-4 h-4" />

@@ -6,6 +6,7 @@ import "./globals.css";
 import QuoraHeader from "@/components/header/QuoraHeader";
 import Footer from "@/components/Footer";
 import { Toaster } from "react-hot-toast";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,7 +35,7 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-      <html lang="en">
+      <html lang="en" suppressHydrationWarning>
         <head>
           {/* Google Tag Manager */}
           <script
@@ -52,47 +53,52 @@ export default function RootLayout({
         </head>
 
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-          
-          {/* Google Tag Manager (noscript) */}
-          <noscript>
-            <iframe
-              src="https://www.googletagmanager.com/ns.html?id=GTM-WJ9TCQ4J"
-              height="0"
-              width="0"
-              style={{ display: "none", visibility: "hidden" }}
-            ></iframe>
-          </noscript>
-          {/* End Google Tag Manager */}
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            {/* Google Tag Manager (noscript) */}
+            <noscript>
+              <iframe
+                src="https://www.googletagmanager.com/ns.html?id=GTM-WJ9TCQ4J"
+                height="0"
+                width="0"
+                style={{ display: "none", visibility: "hidden" }}
+              ></iframe>
+            </noscript>
+            {/* End Google Tag Manager */}
 
-          <QuoraHeader />
-          <main className="flex-1">{children}</main>
-          <Footer />
-          
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              duration: 4000,
-              style: {
-                background: "#363636",
-                color: "#fff",
-              },
-              success: {
-                duration: 3000,
-                iconTheme: {
-                  primary: "#4ade80",
-                  secondary: "#fff",
-                },
-              },
-              error: {
+            <QuoraHeader />
+            <main className="flex-1">{children}</main>
+            <Footer />
+
+            <Toaster
+              position="top-right"
+              toastOptions={{
                 duration: 4000,
-                iconTheme: {
-                  primary: "#ef4444",
-                  secondary: "#fff",
+                style: {
+                  background: "#363636",
+                  color: "#fff",
                 },
-              },
-            }}
-          />
-
+                success: {
+                  duration: 3000,
+                  iconTheme: {
+                    primary: "#4ade80",
+                    secondary: "#fff",
+                  },
+                },
+                error: {
+                  duration: 4000,
+                  iconTheme: {
+                    primary: "#ef4444",
+                    secondary: "#fff",
+                  },
+                },
+              }}
+            />
+          </ThemeProvider>
         </body>
       </html>
     </ClerkProvider>

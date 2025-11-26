@@ -34,14 +34,27 @@ export async function POST(request: NextRequest) {
     }
 
     // Ensure user exists in Sanity
-    console.log("Creating user in Sanity...");
-    const sanityUser = await addUser({
-      id: userId,
-      username: generateUsername(userFullName || "User", userId),
-      email: userEmail || "user@example.com",
-      imageUrl: userImageUrl || "",
-    });
-    console.log("User created:", sanityUser._id);
+    console.log("Fetching/creating user in Sanity...");
+
+    // First, check if user already exists by Clerk ID
+    let sanityUser = await adminClient.fetch(
+      `*[_type == "user" && clerkId == $clerkId][0]`,
+      { clerkId: userId }
+    );
+
+    if (sanityUser) {
+      console.log("✓ Existing user found:", sanityUser._id, "with username:", sanityUser.username);
+    } else {
+      // User doesn't exist, create new one
+      console.log("Creating new user in Sanity...");
+      sanityUser = await addUser({
+        id: userId,
+        username: generateUsername(userFullName || "User", userId),
+        email: userEmail || "user@example.com",
+        imageUrl: userImageUrl || "",
+      });
+      console.log("✓ New user created:", sanityUser._id);
+    }
 
     // Handle image upload if provided
     let imageAsset = null;
@@ -76,16 +89,16 @@ export async function POST(request: NextRequest) {
       },
       body: postBody
         ? [
-            {
-              _type: "block",
-              children: [
-                {
-                  _type: "span",
-                  text: postBody,
-                },
-              ],
-            },
-          ]
+          {
+            _type: "block",
+            children: [
+              {
+                _type: "span",
+                text: postBody,
+              },
+            ],
+          },
+        ]
         : [],
       publishedAt: new Date().toISOString(),
       isReported: false,

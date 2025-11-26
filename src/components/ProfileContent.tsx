@@ -21,6 +21,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useUser } from "@clerk/nextjs";
+import toast from "react-hot-toast";
+import { UserPlus, UserMinus, Loader2 } from "lucide-react";
 
 interface UserProfile {
   _id: string;
@@ -31,6 +34,10 @@ interface UserProfile {
   questionsCount?: number;
   answersCount?: number;
   postsCount?: number;
+  followersCount?: number;
+  followingCount?: number;
+  followers?: Array<{ _id: string; username: string; imageUrl: string }>;
+  following?: Array<{ _id: string; username: string; imageUrl: string }>;
 }
 
 interface UserQuestion {
@@ -41,14 +48,14 @@ interface UserQuestion {
   category: {
     name: string | null;
     color?:
-      | "blue"
-      | "red"
-      | "pink"
-      | "orange"
-      | "green"
-      | "purple"
-      | "gray"
-      | null;
+    | "blue"
+    | "red"
+    | "pink"
+    | "orange"
+    | "green"
+    | "purple"
+    | "gray"
+    | null;
   } | null;
 }
 
@@ -91,10 +98,98 @@ export default function ProfileContent({
   answers,
   posts,
 }: ProfileContentProps) {
-  const [activeTab, setActiveTab] = useState<"questions" | "answers" | "posts">(
+  const { user: currentUser } = useUser();
+  const [activeTab, setActiveTab] = useState<"questions" | "answers" | "posts" | "followers" | "following">(
     "questions"
   );
   const [searchQuery, setSearchQuery] = useState("");
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
+  const [checkingFollow, setCheckingFollow] = useState(true);
+
+  // Check if current user is the profile owner
+  const isOwner = currentUser?.id === user.username; // Note: This might need adjustment based on how we map Clerk ID to username, but for now let's assume we check against ID if possible or just hide if username matches
+  // Actually, user._id is Sanity ID. currentUser.id is Clerk ID. We can't compare directly easily without more data.
+  // But we can compare usernames if we have it.
+  const isProfileOwner = currentUser?.username === user.username;
+
+  React.useEffect(() => {
+    if (currentUser && !isProfileOwner) {
+      checkFollowStatus();
+    } else {
+      setCheckingFollow(false);
+    }
+  }, [currentUser, user._id]);
+
+  const checkFollowStatus = async () => {
+    try {
+      const response = await fetch(
+        `/api/users/follow?userId=${currentUser?.id}&targetId=${user._id}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setIsFollowing(data.isFollowing);
+      }
+    } catch (error) {
+      console.error("Error checking follow status:", error);
+    } finally {
+      setCheckingFollow(false);
+    }
+  };
+
+  const toggleFollow = async () => {
+    if (!currentUser) {
+      toast.error("Please sign in to follow users");
+      return;
+    }
+
+    console.log("=== TOGGLE FOLLOW ===");
+    console.log("Current user ID (Clerk):", currentUser.id);
+    console.log("Target user ID (Sanity):", user._id);
+    console.log("Target username:", user.username);
+    console.log("Action:", isFollowing ? "unfollow" : "follow");
+
+    setFollowLoading(true);
+    const action = isFollowing ? "unfollow" : "follow";
+
+    // Optimistic update
+    setIsFollowing(!isFollowing);
+
+    try {
+      const requestBody = {
+        targetUserId: user._id,
+        action,
+      };
+
+      console.log("Sending request:", requestBody);
+
+      const response = await fetch("/api/users/follow", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+
+      console.log("Response status:", response.status);
+      const responseData = await response.json();
+      console.log("Response data:", responseData);
+
+      if (!response.ok) {
+        // Revert on error
+        setIsFollowing(isFollowing);
+        toast.error(responseData.error || "Failed to update follow status");
+        console.error("Follow failed:", responseData);
+      } else {
+        toast.success(action === "follow" ? `Following ${user.username}` : `Unfollowed ${user.username}`);
+        console.log("✓ Follow successful");
+      }
+    } catch (error) {
+      setIsFollowing(isFollowing);
+      console.error("Error toggling follow:", error);
+      toast.error("Failed to update follow status");
+    } finally {
+      setFollowLoading(false);
+    }
+  };
 
   const filteredQuestions = questions.filter((q) =>
     q.title?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -110,7 +205,7 @@ export default function ProfileContent({
 
   const filteredPosts = posts.filter((p) =>
     p.postTitle?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (p.body?.map((block: any) => 
+    (p.body?.map((block: any) =>
       block.children?.map((child: any) => child.text).join('')
     ).join(' ') || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -171,7 +266,7 @@ export default function ProfileContent({
 
                   <div className="flex items-center space-x-2 mb-3">
                     <span className="text-sm text-gray-600">
-                      0 followers • 0 following
+                      {user.followersCount || 0} followers • {user.followingCount || 0} following
                     </span>
                   </div>
 
@@ -185,14 +280,36 @@ export default function ProfileContent({
                     </div>
                   )}
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-blue-600 text-blue-600 hover:bg-blue-50"
-                    suppressHydrationWarning
-                  >
-                    Add profile credential
-                  </Button>
+                  <div className="flex space-x-3">
+                    {isProfileOwner ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-blue-600 text-blue-600 hover:bg-blue-50"
+                        suppressHydrationWarning
+                      >
+                        Add profile credential
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={toggleFollow}
+                        disabled={followLoading || checkingFollow}
+                        className={`${isFollowing
+                          ? "bg-gray-100 text-gray-900 hover:bg-gray-200"
+                          : "bg-blue-600 text-white hover:bg-blue-700"
+                          }`}
+                      >
+                        {followLoading ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : isFollowing ? (
+                          <UserMinus className="w-4 h-4 mr-2" />
+                        ) : (
+                          <UserPlus className="w-4 h-4 mr-2" />
+                        )}
+                        {isFollowing ? "Unfollow" : "Follow"}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -202,57 +319,71 @@ export default function ProfileContent({
               <nav className="flex space-x-8">
                 <button
                   onClick={() => setActiveTab("questions")}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === "questions"
-                      ? "border-red-600 text-red-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700"
-                  }`}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === "questions"
+                    ? "border-red-600 text-red-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                    }`}
+                  suppressHydrationWarning
                 >
                   Profile
                 </button>
 
                 <button
                   onClick={() => setActiveTab("answers")}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === "answers"
-                      ? "border-red-600 text-red-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700"
-                  }`}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === "answers"
+                    ? "border-red-600 text-red-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                    }`}
+                  suppressHydrationWarning
                 >
                   {answers.length} Answers
                 </button>
 
                 <button
                   onClick={() => setActiveTab("questions")}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === "questions"
-                      ? "border-red-600 text-red-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700"
-                  }`}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === "questions"
+                    ? "border-red-600 text-red-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                    }`}
+                  suppressHydrationWarning
                 >
                   {questions.length} Questions
                 </button>
 
                 <button
                   onClick={() => setActiveTab("posts")}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === "posts"
-                      ? "border-red-600 text-red-600"
-                      : "border-transparent text-gray-500 hover:text-gray-700"
-                  }`}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === "posts"
+                    ? "border-red-600 text-red-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                    }`}
+                  suppressHydrationWarning
                 >
                   {posts.length} Posts
                 </button>
-                <button className="py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">
-                  0 Followers
+                <button
+                  onClick={() => setActiveTab("followers")}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === "followers"
+                    ? "border-red-600 text-red-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                    }`}
+                  suppressHydrationWarning
+                >
+                  {user.followersCount || 0} Followers
                 </button>
-                <button className="py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">
-                  Following
+                <button
+                  onClick={() => setActiveTab("following")}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === "following"
+                    ? "border-red-600 text-red-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                    }`}
+                  suppressHydrationWarning
+                >
+                  {user.followingCount || 0} Following
                 </button>
-                <button className="py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">
+                <button className="py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm" suppressHydrationWarning>
                   Edits
                 </button>
-                <button className="py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm">
+                <button className="py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm" suppressHydrationWarning>
                   Activity
                 </button>
               </nav>
@@ -397,7 +528,7 @@ export default function ProfileContent({
                           </Link>
                           {post.body && (
                             <p className="text-gray-600 mb-3 line-clamp-3">
-                              {post.body.map((block: any) => 
+                              {post.body.map((block: any) =>
                                 block.children?.map((child: any) => child.text).join('')
                               ).join(' ')}
                             </p>
@@ -429,6 +560,86 @@ export default function ProfileContent({
                           {searchQuery
                             ? "No posts match your search."
                             : "This user hasn't created any posts."}
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {activeTab === "followers" && (
+                  <>
+                    {user.followers && user.followers.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {user.followers.map((follower) => (
+                          <Link
+                            key={follower._id}
+                            href={`/profile/${follower.username}`}
+                            className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow flex items-center space-x-3"
+                          >
+                            <Image
+                              src={follower.imageUrl || "/default-avatar.png"}
+                              alt={follower.username}
+                              width={48}
+                              height={48}
+                              className="rounded-full"
+                              unoptimized
+                            />
+                            <div>
+                              <h3 className="font-semibold text-gray-900">
+                                {follower.username}
+                              </h3>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                          No followers yet
+                        </h3>
+                        <p className="text-gray-500">
+                          This user doesn't have any followers.
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {activeTab === "following" && (
+                  <>
+                    {user.following && user.following.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {user.following.map((followedUser) => (
+                          <Link
+                            key={followedUser._id}
+                            href={`/profile/${followedUser.username}`}
+                            className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow flex items-center space-x-3"
+                          >
+                            <Image
+                              src={followedUser.imageUrl || "/default-avatar.png"}
+                              alt={followedUser.username}
+                              width={48}
+                              height={48}
+                              className="rounded-full"
+                              unoptimized
+                            />
+                            <div>
+                              <h3 className="font-semibold text-gray-900">
+                                {followedUser.username}
+                              </h3>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                          Not following anyone
+                        </h3>
+                        <p className="text-gray-500">
+                          This user isn't following anyone yet.
                         </p>
                       </div>
                     )}
@@ -479,9 +690,9 @@ export default function ProfileContent({
                       Joined{" "}
                       {user.joinedAt
                         ? new Date(user.joinedAt).toLocaleDateString("en-US", {
-                            month: "long",
-                            year: "numeric",
-                          })
+                          month: "long",
+                          year: "numeric",
+                        })
                         : "Recently"}
                     </span>
                   </div>
