@@ -174,10 +174,10 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
       user = userResult.data;
 
       console.log("=== FOLLOWERS/FOLLOWING DATA ===");
-      console.log("Followers count:", user.followersCount);
-      console.log("Following count:", user.followingCount);
-      console.log("Followers array:", user.followers);
-      console.log("Following array:", user.following);
+      console.log("Followers count:", user?.followersCount);
+      console.log("Following count:", user?.followingCount);
+      console.log("Followers array:", user?.followers);
+      console.log("Following array:", user?.following);
 
       // Fetch user questions
       const questionsResult = await sanityFetch({
