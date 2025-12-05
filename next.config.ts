@@ -42,16 +42,7 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ["lucide-react"],
   },
 
-  webpack: (config, { dev, isServer }) => {
-    if (dev && !isServer) {
-      config.resolve.alias = {
-        ...config.resolve.alias,
-        react: require.resolve("react"),
-        "react-dom": require.resolve("react-dom"),
-      };
-    }
-    return config;
-  },
+
 
   env: {
     SUPPRESS_HYDRATION_WARNING: "true",
