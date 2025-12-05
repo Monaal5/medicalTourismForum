@@ -24,6 +24,7 @@ interface Question {
     imageUrl: string;
   };
   category?: {
+    _id: string;
     name: string;
     color: string;
     icon: string;
