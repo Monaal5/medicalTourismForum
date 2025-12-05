@@ -15,6 +15,7 @@ interface Question {
     clerkId?: string;
   };
   category?: {
+    _id: string;
     name: string;
     color: string;
     icon: string;
