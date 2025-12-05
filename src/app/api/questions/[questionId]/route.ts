@@ -112,7 +112,16 @@ export async function GET(
         "userVote": null,
         "isAccepted": false,
         "commentCount": 0,
-        "comments": []
+        "comments": *[_type == "comment" && answer._ref == ^._id && !isDeleted] | order(createdAt asc) {
+          _id,
+          comment,
+          createdAt,
+          author->{
+            username,
+            imageUrl,
+            clerkId
+          }
+        }
       }
     `;
 

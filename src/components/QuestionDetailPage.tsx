@@ -207,7 +207,9 @@ export default function QuestionDetailPage({
           errorData = { error: `HTTP ${response.status}: Failed to fetch question` };
         }
         console.error('API error:', errorData);
-        throw new Error(errorData.error || errorData.details || `HTTP ${response.status}: Failed to fetch question`);
+        // Safely access error properties
+        const errorMessage = errorData?.error || errorData?.details || `HTTP ${response.status}: Failed to fetch question`;
+        throw new Error(errorMessage);
       }
 
       const text = await response.text();
@@ -590,7 +592,7 @@ export default function QuestionDetailPage({
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-3xl mx-auto px-4 py-6">
         {/* Question Header */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 mb-6">
+        <div className="bg-card rounded-lg shadow-sm border border-border p-4 sm:p-6 mb-6">
           {/* Category and Tags */}
           {question.category && (
             <div className="flex items-center space-x-2 mb-4">
@@ -606,7 +608,7 @@ export default function QuestionDetailPage({
           )}
 
           {/* Question Title */}
-          <h1 className="text-2xl font-bold text-gray-900 mb-4 leading-tight">
+          <h1 className="text-2xl font-bold text-card-foreground mb-4 leading-tight">
             {question.title}
           </h1>
 
@@ -634,7 +636,7 @@ export default function QuestionDetailPage({
                   unoptimized
                 />
                 <div>
-                  <div className="font-semibold text-gray-900">
+                  <div className="font-semibold text-card-foreground">
                     {question.author?.username || "Anonymous"}
                   </div>
                   <div className="text-sm text-gray-500">
@@ -660,7 +662,7 @@ export default function QuestionDetailPage({
                   <MoreHorizontal className="w-5 h-5" />
                 </button>
                 {showQuestionMenu && (
-                  <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10 py-1">
+                  <div className="absolute right-0 mt-1 w-48 bg-card rounded-lg shadow-lg border border-border z-10 py-1">
                     <button
                       onClick={handleDeleteQuestion}
                       disabled={deletingQuestion || user.id !== question.author?.clerkId}
@@ -718,7 +720,7 @@ export default function QuestionDetailPage({
 
         {/* Answer Form */}
         {isLoaded && user && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 mb-6">
+          <div className="bg-card rounded-lg shadow-sm border border-border p-4 sm:p-6 mb-6">
             {!showAnswerForm ? (
               <div className="text-center">
                 <Button
@@ -740,7 +742,7 @@ export default function QuestionDetailPage({
                     className="rounded-full"
                     unoptimized
                   />
-                  <span className="font-medium text-gray-900">
+                  <span className="font-medium text-card-foreground">
                     {user.fullName || "Anonymous"}
                   </span>
                 </div>
@@ -781,11 +783,11 @@ export default function QuestionDetailPage({
         )}
 
         {/* Answers Section */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-card rounded-lg shadow-sm border border-border">
           {/* Answers Header */}
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">
+              <h2 className="text-lg font-semibold text-card-foreground">
                 {question.answerCount} Answer
                 {question.answerCount !== 1 ? "s" : ""}
               </h2>
@@ -879,7 +881,7 @@ export default function QuestionDetailPage({
                             className="rounded-full"
                             unoptimized
                           />
-                          <span className="text-sm font-medium text-gray-900">
+                          <span className="text-sm font-medium text-card-foreground">
                             {answer.author?.username || "Anonymous"}
                           </span>
                           <span className="text-sm text-gray-500">
@@ -920,7 +922,7 @@ export default function QuestionDetailPage({
                                 <MoreHorizontal className="w-5 h-5" />
                               </button>
                               {showAnswerMenu === answer._id && (
-                                <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10 py-1">
+                                <div className="absolute right-0 mt-1 w-48 bg-card rounded-lg shadow-lg border border-border z-10 py-1">
                                   <button
                                     onClick={() => {
                                       handleDeleteAnswer(answer._id);

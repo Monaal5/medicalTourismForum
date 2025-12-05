@@ -189,9 +189,9 @@ export default function ProfilePage() {
           </Link>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <div className="bg-card rounded-lg shadow-sm border border-border p-6">
           <div className="border-b border-gray-200 pb-4 mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold text-card-foreground">
               Account Settings
             </h1>
             <p className="text-gray-600 mt-1">
@@ -202,7 +202,7 @@ export default function ProfilePage() {
           <div className="space-y-6">
             {/* Profile Picture Section */}
             <div>
-              <Label className="text-lg font-medium text-gray-900 mb-4 block">
+              <Label className="text-lg font-medium text-card-foreground mb-4 block">
                 Profile Picture
               </Label>
               <div className="flex items-center space-x-6">
@@ -314,7 +314,7 @@ export default function ProfilePage() {
 
             {/* Account Information */}
             <div className="border-t border-gray-200 pt-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">
+              <h3 className="text-lg font-medium text-card-foreground mb-4">
                 Account Information
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

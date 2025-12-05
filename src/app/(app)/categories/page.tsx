@@ -165,7 +165,7 @@ export default function CategoriesPage() {
         const result = await response.json();
         if (result.error) {
           console.error("Error creating category:", result.error);
-          toast.error("Failed to create category", { id: toastId });
+          toast.error(result.error, { id: toastId });
         } else {
           setFormData({
             name: "",

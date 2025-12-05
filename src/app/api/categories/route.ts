@@ -60,16 +60,29 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check for existing category with same name (case-insensitive)
-    const existingCategory = await adminClient.fetch(
-      `*[_type == "category" && lower(name) == lower($name)][0]`,
-      { name }
+    // Fetch all existing category names to perform robust duplicate checking
+    const allCategories = await adminClient.fetch(
+      `*[_type == "category"]{name}`
     );
 
-    if (existingCategory) {
-      console.log("Category already exists:", existingCategory.name);
+    const normalize = (str: string) => {
+      // Remove whitespace and convert to lower case
+      let normalized = str.toLowerCase().replace(/\s+/g, "");
+      // Remove trailing numbers
+      normalized = normalized.replace(/\d+$/, "");
+      return normalized;
+    };
+
+    const newNameNormalized = normalize(name);
+
+    const isDuplicate = allCategories.some((cat: any) => {
+      return normalize(cat.name) === newNameNormalized;
+    });
+
+    if (isDuplicate) {
+      console.log("Category already exists (fuzzy match):", name);
       return NextResponse.json(
-        { error: "Category with this name already exists" },
+        { error: "Category already exists" },
         { status: 400 }
       );
     }

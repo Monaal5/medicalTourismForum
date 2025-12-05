@@ -29,10 +29,7 @@ export function useCategories() {
                 const categories = data.categories || [];
                 setCategories(categories);
 
-                // If no categories exist, try to seed sample data
-                if (categories.length === 0) {
-                    await seedSampleCategories();
-                }
+
             } else {
                 throw new Error(data.error || "Unknown error");
             }
@@ -50,29 +47,7 @@ export function useCategories() {
         fetchCategories();
     }, []);
 
-    const seedSampleCategories = async () => {
-        try {
-            const response = await fetch("/api/seed-categories", {
-                method: "POST",
-            });
 
-            if (response.ok) {
-                const data = await response.json();
-                if (data.success) {
-                    // Refetch categories after seeding
-                    const categoriesResponse = await fetch("/api/categories");
-                    if (categoriesResponse.ok) {
-                        const categoriesData = await categoriesResponse.json();
-                        if (categoriesData.success) {
-                            setCategories(categoriesData.categories || []);
-                        }
-                    }
-                }
-            }
-        } catch (error) {
-            console.error("Error seeding categories:", error);
-        }
-    };
 
     return { categories, loading, error, refetch: fetchCategories };
 }

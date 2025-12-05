@@ -208,11 +208,10 @@ export default function PostContent({ post, comments, onCommentAdded }: PostCont
               <button
                 onClick={() => handlePostVote("upvote")}
                 disabled={!postCanVote || postVoteLoading}
-                className={`p-1 rounded ${
-                  postUserVote === "upvote"
+                className={`p-1 rounded ${postUserVote === "upvote"
                     ? "text-orange-500"
                     : "text-gray-500 hover:bg-gray-200"
-                } ${!postCanVote || postVoteLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+                  } ${!postCanVote || postVoteLoading ? "opacity-50 cursor-not-allowed" : ""}`}
                 suppressHydrationWarning
               >
                 <ArrowUp className="w-5 h-5" />
@@ -223,11 +222,10 @@ export default function PostContent({ post, comments, onCommentAdded }: PostCont
               <button
                 onClick={() => handlePostVote("downvote")}
                 disabled={!postCanVote || postVoteLoading}
-                className={`p-1 rounded ${
-                  postUserVote === "downvote"
+                className={`p-1 rounded ${postUserVote === "downvote"
                     ? "text-blue-500"
                     : "text-gray-500 hover:bg-gray-200"
-                } ${!postCanVote || postVoteLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+                  } ${!postCanVote || postVoteLoading ? "opacity-50 cursor-not-allowed" : ""}`}
                 suppressHydrationWarning
               >
                 <ArrowDown className="w-5 h-5" />
@@ -285,13 +283,13 @@ export default function PostContent({ post, comments, onCommentAdded }: PostCont
               )}
 
               {post.image && (
-                <div className="mb-4">
+                <div className="mb-4 flex justify-center">
                   <Image
                     src={urlFor(post.image).width(800).height(600).url()}
                     alt={post.image.alt || "Post image"}
                     width={800}
                     height={600}
-                    className="rounded-lg max-w-full h-auto"
+                    className="rounded-lg w-full md:w-1/2 h-auto object-cover"
                     unoptimized
                   />
                 </div>

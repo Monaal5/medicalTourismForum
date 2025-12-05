@@ -1,6 +1,6 @@
 "use client";
 import { formatDistanceToNow } from "date-fns";
-import { ArrowUp, ArrowDown, Reply, Trash2 } from "lucide-react";
+import { ArrowUp, ArrowDown, Reply, Trash2, MessageCircle } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
 import { useVoting } from "@/hooks/useVoting";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,7 @@ export default function CommentCard({
     "comment",
   );
   const [showReplyForm, setShowReplyForm] = useState(false);
+  const [showReplies, setShowReplies] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [deletingComment, setDeletingComment] = useState(false);
 
@@ -104,11 +105,10 @@ export default function CommentCard({
           <button
             onClick={() => handleVote("upvote")}
             disabled={!canVote || loading}
-            className={`p-1 rounded ${
-              userVote === "upvote"
-                ? "text-orange-500"
-                : "text-gray-500 hover:bg-gray-200"
-            } ${!canVote || loading ? "opacity-50 cursor-not-allowed" : ""}`}
+            className={`p-1 rounded ${userVote === "upvote"
+              ? "text-orange-500"
+              : "text-gray-500 hover:bg-gray-200"
+              } ${!canVote || loading ? "opacity-50 cursor-not-allowed" : ""}`}
             suppressHydrationWarning
           >
             <ArrowUp className="w-4 h-4" />
@@ -117,11 +117,10 @@ export default function CommentCard({
           <button
             onClick={() => handleVote("downvote")}
             disabled={!canVote || loading}
-            className={`p-1 rounded ${
-              userVote === "downvote"
-                ? "text-blue-500"
-                : "text-gray-500 hover:bg-gray-200"
-            } ${!canVote || loading ? "opacity-50 cursor-not-allowed" : ""}`}
+            className={`p-1 rounded ${userVote === "downvote"
+              ? "text-blue-500"
+              : "text-gray-500 hover:bg-gray-200"
+              } ${!canVote || loading ? "opacity-50 cursor-not-allowed" : ""}`}
             suppressHydrationWarning
           >
             <ArrowDown className="w-4 h-4" />
@@ -144,10 +143,10 @@ export default function CommentCard({
 
           <p className="text-gray-700 mb-2">{comment.comment}</p>
 
-          <div className="flex items-center space-x-4 text-sm text-gray-500">
+          <div className="flex items-center space-x-4 text-sm text-gray-500 mt-2">
             <button
               onClick={handleReply}
-              className="flex items-center space-x-1 hover:bg-gray-100 px-2 py-1 rounded"
+              className="flex items-center space-x-1 hover:bg-gray-100 px-2 py-1 rounded transition-colors"
               suppressHydrationWarning
             >
               <Reply className="w-3 h-3" />
@@ -157,7 +156,7 @@ export default function CommentCard({
               <button
                 onClick={handleDeleteComment}
                 disabled={deletingComment}
-                className="flex items-center space-x-1 text-red-600 hover:bg-red-50 px-2 py-1 rounded"
+                className="flex items-center space-x-1 text-red-600 hover:bg-red-50 px-2 py-1 rounded transition-colors"
                 suppressHydrationWarning
               >
                 <Trash2 className="w-3 h-3" />
@@ -199,18 +198,32 @@ export default function CommentCard({
             </div>
           )}
 
-          {/* Nested Replies */}
+          {/* Nested Replies Toggle & List */}
           {comment.replies && comment.replies.length > 0 && (
-            <div className="mt-4 pl-4 border-l-2 border-gray-200 space-y-3">
-              {comment.replies.map((reply) => (
-                <CommentCard
-                  key={reply._id}
-                  comment={reply}
-                  onReply={onReply}
-                  submittingReply={submittingReply}
-                  onDelete={onDelete}
-                />
-              ))}
+            <div className="mt-3">
+              <button
+                onClick={() => setShowReplies(!showReplies)}
+                className="text-xs font-medium text-blue-600 hover:text-blue-700 flex items-center space-x-1 mb-2"
+              >
+                <MessageCircle className="w-3 h-3" />
+                <span>
+                  {showReplies ? "Hide" : "View"} {comment.replies.length} {comment.replies.length === 1 ? "reply" : "replies"}
+                </span>
+              </button>
+
+              {showReplies && (
+                <div className="pl-4 border-l-2 border-gray-200 space-y-3">
+                  {comment.replies.map((reply) => (
+                    <CommentCard
+                      key={reply._id}
+                      comment={reply}
+                      onReply={onReply}
+                      submittingReply={submittingReply}
+                      onDelete={onDelete}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -165,7 +165,7 @@ export default function PostCard({ post }: PostCardProps) {
 
   return (
     <div
-      className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden w-full"
+      className="bg-card rounded-lg shadow-sm border border-border overflow-hidden w-full mb-4"
       suppressHydrationWarning
     >
       {/* Post Header */}
@@ -188,7 +188,7 @@ export default function PostCard({ post }: PostCardProps) {
             <div className="flex flex-col min-w-0 flex-1">
               <Link
                 href={`/profile/${post.author.username}`}
-                className="font-semibold text-sm sm:text-base text-gray-900 hover:text-blue-600 transition-colors truncate"
+                className="font-semibold text-sm sm:text-base text-card-foreground hover:text-blue-600 transition-colors truncate block"
               >
                 {post.author.username}
               </Link>
@@ -227,7 +227,7 @@ export default function PostCard({ post }: PostCardProps) {
                 <MoreHorizontal className="w-5 h-5" />
               </button>
               {showMenu && (
-                <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10 py-1">
+                <div className="absolute right-0 mt-1 w-48 bg-card rounded-lg shadow-lg border border-border z-10 py-1">
                   <button
                     onClick={handleDelete}
                     disabled={deleting || !isOwner}
@@ -253,7 +253,7 @@ export default function PostCard({ post }: PostCardProps) {
 
         {/* Post Title */}
         <Link href={`/post/${post._id}`}>
-          <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 hover:text-blue-600 cursor-pointer transition-colors line-clamp-3">
+          <h2 className="text-base sm:text-lg font-semibold text-card-foreground mb-2 hover:text-blue-600 cursor-pointer transition-colors line-clamp-3">
             {post.postTitle}
           </h2>
         </Link>
@@ -280,7 +280,7 @@ export default function PostCard({ post }: PostCardProps) {
             alt={post.image.alt || "Post image"}
             width={600}
             height={400}
-            className="rounded-lg w-full h-auto"
+            className="rounded-lg w-full md:w-1/2 h-auto mx-auto object-cover"
             unoptimized
           />
         </div>
@@ -295,8 +295,8 @@ export default function PostCard({ post }: PostCardProps) {
               onClick={() => handleVote("upvote")}
               disabled={!canVote || loading}
               className={`p-1.5 sm:p-2 rounded-full transition-colors ${userVote === "upvote"
-                  ? "text-orange-500 bg-orange-50"
-                  : "text-gray-500 hover:bg-gray-100"
+                ? "text-orange-500 bg-orange-50"
+                : "text-gray-500 hover:bg-gray-100"
                 } ${!canVote || loading ? "opacity-50 cursor-not-allowed" : ""}`}
               suppressHydrationWarning
             >
@@ -309,8 +309,8 @@ export default function PostCard({ post }: PostCardProps) {
               onClick={() => handleVote("downvote")}
               disabled={!canVote || loading}
               className={`p-1.5 sm:p-2 rounded-full transition-colors ${userVote === "downvote"
-                  ? "text-blue-500 bg-blue-50"
-                  : "text-gray-500 hover:bg-gray-100"
+                ? "text-blue-500 bg-blue-50"
+                : "text-gray-500 hover:bg-gray-100"
                 } ${!canVote || loading ? "opacity-50 cursor-not-allowed" : ""}`}
               suppressHydrationWarning
             >

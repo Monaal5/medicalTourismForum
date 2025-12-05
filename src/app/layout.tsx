@@ -5,8 +5,11 @@ import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import QuoraHeader from "@/components/header/QuoraHeader";
 import Footer from "@/components/Footer";
+import BottomNavigation from "@/components/BottomNavigation";
+import FloatingActionButton from "@/components/FloatingActionButton";
 import { Toaster } from "react-hot-toast";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import NotificationManager from "@/components/NotificationManager";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -94,6 +97,11 @@ export default function RootLayout({
                 },
               }}
             />
+
+            {/* Bottom Navigation - Mobile Only */}
+            <NotificationManager />
+            <BottomNavigation />
+            <FloatingActionButton />
           </ThemeProvider>
         </body>
       </html>

@@ -22,7 +22,7 @@ export async function getUser(): Promise<UserResult | { error: string }> {
     console.log(`Found Clerk user ${loggedInUser.id}`);
     //check if user exists in database first
     const getExistingUserQuery = defineQuery(
-      `*[_type == "user" && _id == $id][0]`,
+      `*[_type == "user" && (_id == $id || clerkId == $id)][0]`,
     );
     console.log("Checking if user exists in sanity database ");
     const existingUser = await sanityFetch({

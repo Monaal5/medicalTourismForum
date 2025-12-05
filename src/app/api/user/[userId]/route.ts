@@ -15,9 +15,9 @@ export async function GET(
       );
     }
 
-    // Fetch user from Sanity by _id (which is the Clerk user ID)
+    // Fetch user from Sanity by _id or clerkId
     const user = await adminClient.fetch(
-      `*[_type == "user" && _id == $userId][0] {
+      `*[_type == "user" && (_id == $userId || clerkId == $userId)][0] {
         _id,
         username,
         email,

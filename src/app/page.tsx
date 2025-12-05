@@ -2,8 +2,13 @@ import { sanityFetch } from "@/sanity/lib/live";
 import { defineQuery } from "groq";
 import QuestionCard from "@/components/QuestionCard";
 import PostCard from "@/components/PostCard";
+import ModernQuestionCard from "@/components/ModernQuestionCard";
+import CategoryPills from "@/components/CategoryPills";
+import ModernHeader from "@/components/ModernHeader";
 import CategoriesSidebar from "@/components/CategoriesSidebar";
 import TrendingTopics from "@/components/TrendingTopics";
+import FloatingActionButton from "@/components/FloatingActionButton";
+import MobileHomeFeed from "@/components/MobileHomeFeed";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -18,15 +23,23 @@ interface Question {
     clerkId?: string;
   };
   category?: {
+    _id: string;
     name: string;
     color: string;
     icon: string;
+  };
+  image?: {
+    asset: {
+      url: string;
+    };
+    alt?: string;
   };
   tags?: string[];
   isAnswered: boolean;
   isDeleted: boolean;
   createdAt: string;
   answerCount?: number;
+  voteCount?: number;
   topAnswer?: {
     _id: string;
     content: any[];
@@ -66,8 +79,15 @@ interface Post {
   commentCount?: number;
 }
 
+interface Category {
+  _id: string;
+  name: string;
+  slug: string;
+  color?: string;
+}
+
 const homeQuestionsQuery = defineQuery(`
-  *[_type == "question" && !isDeleted] | order(createdAt desc) [0...10] {
+  *[_type == "question" && !isDeleted] | order(createdAt desc) [0...20] {
     _id,
     title,
     description,
@@ -77,15 +97,23 @@ const homeQuestionsQuery = defineQuery(`
       clerkId
     },
     category->{
+      _id,
       name,
       color,
       icon
+    },
+    image{
+      asset->{
+        url
+      },
+      alt
     },
     tags,
     isAnswered,
     isDeleted,
     createdAt,
     "answerCount": count(*[_type == "answer" && references(^._id) && !isDeleted]),
+    "voteCount": 0,
     "topAnswer": *[_type == "answer" && references(^._id) && !isDeleted] | order(createdAt asc) [0] {
       _id,
       content,
@@ -125,9 +153,19 @@ const homePostsQuery = defineQuery(`
   }
 `);
 
+const categoriesQuery = defineQuery(`
+  *[_type == "category"] | order(name asc) {
+    _id,
+    name,
+    "slug": slug.current,
+    color
+  }
+`);
+
 export default async function HomePage() {
   let questions: Question[] = [];
   let posts: Post[] = [];
+  let categories: Category[] = [];
   let loading = false;
 
   try {
@@ -148,6 +186,15 @@ export default async function HomePage() {
     if (postsResult.data) {
       posts = postsResult.data as any;
     }
+
+    const categoriesResult = await sanityFetch({
+      query: categoriesQuery,
+      params: {},
+    });
+
+    if (categoriesResult.data) {
+      categories = categoriesResult.data as any;
+    }
   } catch (error) {
     console.error("Error fetching content:", error);
     loading = true;
@@ -155,16 +202,41 @@ export default async function HomePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-4xl mx-auto p-4">
-          <div className="space-y-4">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="bg-white rounded-lg p-6 animate-pulse">
-                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                <div className="h-20 bg-gray-200 rounded mt-4"></div>
+      <div className="min-h-screen bg-background">
+        {/* Mobile Loading */}
+        <div className="md:hidden">
+          <ModernHeader />
+          <div className="p-4 space-y-4 pb-20">
+            {[...Array(3)].map((_, i) => (
+              <div
+                key={i}
+                className="bg-card rounded-2xl overflow-hidden animate-pulse"
+              >
+                <div className="h-48 bg-muted" />
+                <div className="p-4 space-y-3">
+                  <div className="h-4 bg-muted rounded w-1/4" />
+                  <div className="h-6 bg-muted rounded w-3/4" />
+                  <div className="h-4 bg-muted rounded w-full" />
+                  <div className="h-4 bg-muted rounded w-2/3" />
+                </div>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Desktop Loading */}
+        <div className="hidden md:block">
+          <div className="max-w-7xl mx-auto px-4 py-6">
+            <div className="grid grid-cols-12 gap-6">
+              <div className="col-span-3">
+                <div className="h-64 bg-card rounded-lg animate-pulse" />
+              </div>
+              <div className="col-span-9 space-y-4">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="h-32 bg-card rounded-lg animate-pulse" />
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -172,68 +244,88 @@ export default async function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50" suppressHydrationWarning>
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
-          {/* Sidebar - Hidden on mobile, shown on desktop */}
-          <div className="hidden lg:block lg:col-span-3">
-            <div className="sticky top-20 space-y-4">
-              <CategoriesSidebar />
-              <TrendingTopics />
-            </div>
-          </div>
-
-          {/* Main Content */}
-          <div className="lg:col-span-9">
-            <div className="mb-4 sm:mb-6">
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
-                Recent Activity
-              </h1>
-              <p className="text-sm sm:text-base text-gray-600 mt-1">
-                Discover questions, answers, and posts from our community
-              </p>
-            </div>
-
-            <div className="space-y-3 sm:space-y-4" suppressHydrationWarning>
-              {posts.map((post) => (
-                <PostCard key={post._id} post={post} />
-              ))}
-
-              {questions.map((question) => (
-                <QuestionCard key={question._id} question={question} />
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {questions.length === 0 && posts.length === 0 && (
-          <div className="text-center py-8 sm:py-12 px-4">
-            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
-              <span className="text-xl sm:text-2xl">❓</span>
-            </div>
-            <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
-              No content yet
-            </h3>
-            <p className="text-sm sm:text-base text-gray-500 mb-4">
-              Be the first to ask a question or create a post!
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
-              <a
-                href="/ask"
-                className="inline-flex items-center justify-center px-4 py-2 bg-red-600 text-white text-sm sm:text-base rounded-md hover:bg-red-700 transition-colors"
-              >
-                Ask a Question
-              </a>
-              <a
-                href="/create-post"
-                className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white text-sm sm:text-base rounded-md hover:bg-blue-700 transition-colors"
-              >
-                Create a Post
-              </a>
-            </div>
-          </div>
-        )}
+    <>
+      {/* MOBILE VIEW (< md breakpoint) - Modern Design */}
+      <div className="md:hidden min-h-screen bg-background pb-20">
+        <ModernHeader />
+        <MobileHomeFeed
+          initialQuestions={questions}
+          initialPosts={posts}
+          categories={categories}
+        />
       </div>
-    </div>
+
+      {/* DESKTOP VIEW (≥ md breakpoint) - Traditional Layout */}
+      <div className="hidden md:block min-h-screen bg-background" suppressHydrationWarning>
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
+            {/* Left Sidebar */}
+            <div className="lg:col-span-3">
+              <div className="sticky top-20 space-y-4">
+                <CategoriesSidebar />
+              </div>
+            </div>
+
+            {/* Main Content */}
+            <div className="lg:col-span-6">
+              <div className="mb-4 sm:mb-6">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-card-foreground">
+                  Recent Activity
+                </h1>
+                <p className="text-sm sm:text-base text-muted-foreground mt-1">
+                  Discover questions, answers, and posts from our community
+                </p>
+              </div>
+
+              <div className="space-y-6" suppressHydrationWarning>
+                {posts.map((post) => (
+                  <PostCard key={post._id} post={post} />
+                ))}
+
+                {questions.map((question) => (
+                  <QuestionCard key={question._id} question={question} />
+                ))}
+              </div>
+            </div>
+
+            {/* Right Sidebar */}
+            <div className="lg:col-span-3">
+              <div className="sticky top-20 space-y-4">
+                <TrendingTopics />
+              </div>
+            </div>
+          </div>
+
+          {questions.length === 0 && posts.length === 0 && (
+            <div className="text-center py-8 sm:py-12 px-4">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                <span className="text-xl sm:text-2xl">❓</span>
+              </div>
+              <h3 className="text-base sm:text-lg font-semibold text-card-foreground mb-2">
+                No content yet
+              </h3>
+              <p className="text-sm sm:text-base text-muted-foreground mb-4">
+                Be the first to ask a question or create a post!
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
+                <a
+                  href="/ask"
+                  className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white text-sm sm:text-base rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  Ask a Question
+                </a>
+                <a
+                  href="/create-post"
+                  className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white text-sm sm:text-base rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  Create a Post
+                </a>
+              </div>
+            </div>
+          )}
+        </div>
+        <FloatingActionButton />
+      </div>
+    </>
   );
 }

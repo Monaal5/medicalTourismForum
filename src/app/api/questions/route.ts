@@ -35,6 +35,7 @@ export async function GET(request: Request) {
         imageUrl
       },
       category->{
+        _id,
         name,
         color,
         icon

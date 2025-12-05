@@ -83,8 +83,9 @@ export default async function PostPage({ params }: PostPageProps) {
     }
 
     // Fetch comments with nested replies
+    // Fetch all comments for the post (flat list)
     const commentsQuery = defineQuery(`
-      *[_type == "comment" && post._ref == $id && !isDeleted && !defined(parentComment)] | order(createdAt asc) {
+      *[_type == "comment" && post._ref == $id && !isDeleted] | order(createdAt asc) {
         _id,
         comment,
         createdAt,
@@ -93,16 +94,7 @@ export default async function PostPage({ params }: PostPageProps) {
           imageUrl,
           clerkId
         },
-        "replies": *[_type == "comment" && parentComment._ref == ^._id && !isDeleted] | order(createdAt asc) {
-          _id,
-          comment,
-          createdAt,
-          author->{
-            username,
-            imageUrl,
-            clerkId
-          }
-        }
+        parentComment
       }
     `);
 
@@ -112,14 +104,39 @@ export default async function PostPage({ params }: PostPageProps) {
     });
 
     if (commentsResult.data) {
-      comments = commentsResult.data as any as CommentWithDetails[];
-      console.log('=== COMMENTS DEBUG ===');
-      console.log('Fetched comments for post:', id, 'Count:', comments.length);
-      console.log('Full comments data:', JSON.stringify(comments, null, 2));
-      console.log('Comments with replies:', comments.filter(c => c.replies && c.replies.length > 0).length);
-      comments.forEach((comment, idx) => {
-        console.log(`Comment ${idx + 1}:`, comment._id, 'Replies:', comment.replies?.length || 0);
+      const allComments = commentsResult.data as any[];
+
+      // Build comment tree
+      const commentMap = new Map();
+      const rootComments: CommentWithDetails[] = [];
+
+      // First pass: create map of all comments
+      allComments.forEach(comment => {
+        comment.replies = [];
+        commentMap.set(comment._id, comment);
       });
+
+      // Second pass: link children to parents
+      allComments.forEach(comment => {
+        if (comment.parentComment?._ref) {
+          const parent = commentMap.get(comment.parentComment._ref);
+          if (parent) {
+            parent.replies.push(comment);
+          } else {
+            // Parent might be deleted or not found, treat as root or orphan
+            // For now, let's treat as root if parent is missing to avoid data loss
+            rootComments.push(comment);
+          }
+        } else {
+          rootComments.push(comment);
+        }
+      });
+
+      comments = rootComments;
+
+      console.log('=== COMMENTS DEBUG ===');
+      console.log('Total comments fetched:', allComments.length);
+      console.log('Root comments:', comments.length);
     } else {
       console.log('No comments found for post:', id);
     }

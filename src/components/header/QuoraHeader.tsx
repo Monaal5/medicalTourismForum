@@ -224,25 +224,12 @@ export default function QuoraHeader() {
   return (
     <>
       <header
-        className="bg-white border-b border-gray-200 sticky top-0 z-50"
+        className="bg-card border-b border-border sticky top-0 z-50"
         suppressHydrationWarning
       >
         {/* Top Navigation */}
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8" suppressHydrationWarning>
           <div className="flex items-center justify-between h-14 sm:h-16" suppressHydrationWarning>
-            {/* Mobile: Hamburger Menu */}
-            <button
-              className="md:hidden mobile-menu-button text-gray-700 p-2 hover:bg-gray-100 rounded-lg"
-              onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
-              suppressHydrationWarning
-            >
-              {isMobileSidebarOpen ? (
-                <X className="w-7 h-7 sm:w-6 sm:h-6" suppressHydrationWarning />
-              ) : (
-                <Menu className="w-7 h-7 sm:w-6 sm:h-6" suppressHydrationWarning />
-              )}
-            </button>
-
             {/* Left Side - Logo and Navigation */}
             <div className="flex items-center space-x-3 sm:space-x-6" suppressHydrationWarning>
               {/* Logo */}
@@ -252,7 +239,7 @@ export default function QuoraHeader() {
                   alt="Medical Tourism Forum"
                   width={320}
                   height={100}
-                  className="h-10 sm:h-12 md:h-20 w-auto"
+                  className="h-12 sm:h-16 md:h-25 w-auto"
                   suppressHydrationWarning
                 />
               </Link>
@@ -297,12 +284,11 @@ export default function QuoraHeader() {
               </nav>
             </div>
 
-            {/* Center - Search Bar (Desktop) / Search Button (Mobile) */}
-            <div className="flex-1 max-w-lg mx-2 sm:mx-4" suppressHydrationWarning>
-              {/* Desktop Search */}
+            {/* Center - Search Bar (Desktop Only) */}
+            <div className="flex-1 max-w-lg mx-2 sm:mx-4 hidden md:block" suppressHydrationWarning>
               <form
                 onSubmit={handleSearch}
-                className="relative hidden md:block"
+                className="relative"
                 suppressHydrationWarning
               >
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -315,15 +301,6 @@ export default function QuoraHeader() {
                   suppressHydrationWarning
                 />
               </form>
-
-              {/* Mobile Search Button */}
-              <button
-                className="md:hidden p-2 hover:bg-gray-100 rounded-lg"
-                onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
-                suppressHydrationWarning
-              >
-                <Search className="w-7 h-7 sm:w-6 sm:h-6 text-gray-600" suppressHydrationWarning />
-              </button>
             </div>
 
             {/* Right Side - User Actions */}
@@ -338,7 +315,50 @@ export default function QuoraHeader() {
                     <span>Premium</span>
                   </Button>
 
-                  <div className="flex items-center space-x-2">
+                  {/* Mobile Search Button */}
+                  <button
+                    className="md:hidden p-2 hover:bg-muted rounded-lg transition-colors"
+                    onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
+                    aria-label="Search"
+                  >
+                    <Search className="w-6 h-6 text-card-foreground" />
+                  </button>
+
+                  {/* Theme Toggle Button */}
+                  <button
+                    onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                    className="p-2 hover:bg-muted rounded-lg transition-colors"
+                    aria-label="Toggle theme"
+                  >
+                    {theme === "dark" ? (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="text-card-foreground"
+                      >
+                        <circle cx="12" cy="12" r="4" />
+                        <path d="M12 2v2" />
+                        <path d="M12 20v2" />
+                        <path d="m4.93 4.93 1.41 1.41" />
+                        <path d="m17.66 17.66 1.41 1.41" />
+                        <path d="M2 12h2" />
+                        <path d="M20 12h2" />
+                        <path d="m6.34 17.66-1.41 1.41" />
+                        <path d="m19.07 4.93-1.41 1.41" />
+                      </svg>
+                    ) : (
+                      <Moon className="w-5 h-5 text-card-foreground" />
+                    )}
+                  </button>
+
+                  <div className="hidden md:flex items-center space-x-2">
                     <div className="relative" ref={dropdownRef}>
                       <Image
                         src={
@@ -357,7 +377,7 @@ export default function QuoraHeader() {
 
                       {/* Profile Dropdown Menu */}
                       {isProfileDropdownOpen && (
-                        <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                        <div className="absolute right-0 top-full mt-2 w-64 bg-card rounded-lg shadow-lg border border-border py-2 z-50">
                           {/* Profile Header */}
                           <div className="flex items-center px-4 py-3 border-b border-gray-100">
                             <Image
@@ -377,7 +397,7 @@ export default function QuoraHeader() {
                                 className="block"
                                 onClick={() => setIsProfileDropdownOpen(false)}
                               >
-                                <div className="font-semibold text-gray-900 hover:text-blue-600 transition-colors cursor-pointer">
+                                <div className="font-semibold text-card-foreground hover:text-blue-600 transition-colors cursor-pointer">
                                   {user.fullName || user.firstName || "User"}
                                 </div>
                                 <div className="text-xs text-gray-400">
@@ -556,7 +576,7 @@ export default function QuoraHeader() {
                     <Globe className="w-5 h-5 text-gray-600" />
                   </div>
 
-                  <div className="flex items-center space-x-2">
+                  <div className="hidden md:flex items-center space-x-2">
                     <Button
                       className="bg-blue-600 hover:bg-blue-700 text-white flex items-center space-x-1 text-sm sm:text-base px-3 sm:px-4"
                       onClick={() => router.push("/ask")}
@@ -597,74 +617,11 @@ export default function QuoraHeader() {
             </div>
           </div>
         </div>
-
-        {/* Question Input Bar */}
-        <div className="bg-gray-50 border-t border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-            <div className="flex items-center space-x-4">
-              {user && (
-                <Image
-                  src={
-                    user.imageUrl ||
-                    "https://via.placeholder.com/40x40/cccccc/666666?text=U"
-                  }
-                  alt={user.fullName || "User"}
-                  width={40}
-                  height={40}
-                  className="rounded-full"
-                  unoptimized
-                />
-              )}
-              <form
-                onSubmit={handleAskQuestion}
-                className="flex-1"
-                suppressHydrationWarning
-              >
-                <Input
-                  type="text"
-                  placeholder="What do you want to ask or share?"
-                  value={questionInput}
-                  onChange={(e) => setQuestionInput(e.target.value)}
-                  className="w-full border-gray-300 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  suppressHydrationWarning
-                />
-              </form>
-              <div
-                className="flex items-center space-x-2"
-                suppressHydrationWarning
-              >
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-blue-600 text-blue-600 hover:bg-blue-50"
-                  onClick={() => router.push("/ask")}
-                  suppressHydrationWarning
-                >
-                  Ask
-                </Button>
-                <AnswerButton
-                  variant="outline"
-                  size="sm"
-                  suppressHydrationWarning
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-blue-600 text-blue-600 hover:bg-blue-50"
-                  onClick={() => router.push("/create-post")}
-                  suppressHydrationWarning
-                >
-                  Post
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
       </header>
 
       {/* Mobile Search Overlay */}
       {isMobileSearchOpen && (
-        <div className="md:hidden fixed inset-0 bg-white z-50 p-4">
+        <div className="md:hidden fixed inset-0 bg-card z-50 p-4">
           <div className="flex items-center space-x-2 mb-4">
             <button onClick={() => setIsMobileSearchOpen(false)} suppressHydrationWarning>
               <X className="w-6 h-6" />
@@ -688,7 +645,7 @@ export default function QuoraHeader() {
       {isMobileSidebarOpen && (
         <div className="md:hidden fixed inset-0 z-40">
           <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setIsMobileSidebarOpen(false)} />
-          <div ref={sidebarRef} className="fixed left-0 top-0 bottom-0 w-80 bg-white shadow-xl overflow-y-auto">
+          <div ref={sidebarRef} className="fixed left-0 top-0 bottom-0 w-80 bg-card shadow-xl overflow-y-auto">
             <div className="p-4">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold">Menu</h2>
@@ -768,8 +725,8 @@ export default function QuoraHeader() {
       {isCategoriesDialogOpen && (
         <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4">
           <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setIsCategoriesDialogOpen(false)} />
-          <div ref={categoriesDialogRef} className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
+          <div ref={categoriesDialogRef} className="relative bg-card rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="sticky top-0 bg-card border-b border-border p-4 flex items-center justify-between">
               <h2 className="text-xl font-semibold">Categories</h2>
               <button onClick={() => setIsCategoriesDialogOpen(false)} suppressHydrationWarning>
                 <X className="w-6 h-6" />

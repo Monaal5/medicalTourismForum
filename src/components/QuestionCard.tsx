@@ -31,6 +31,7 @@ interface Question {
     clerkId?: string;
   };
   category?: {
+    _id: string;
     name: string;
     color: string;
     icon: string;
@@ -253,7 +254,7 @@ export default function QuestionCard({ question }: QuestionCardProps) {
 
   return (
     <div
-      className="bg-white border border-gray-200 rounded-lg p-4 sm:p-6 mb-3 hover:shadow-md transition-shadow w-full"
+      className="bg-card border border-border rounded-lg p-4 sm:p-6 mb-4 hover:shadow-md transition-shadow w-full"
       suppressHydrationWarning
     >
       {/* Question Header */}
@@ -272,7 +273,7 @@ export default function QuestionCard({ question }: QuestionCardProps) {
           <div className="flex flex-col min-w-0 flex-1">
             <Link
               href={`/profile/${question.author.username}`}
-              className="font-semibold text-sm sm:text-base text-gray-900 hover:text-blue-600 transition-colors truncate"
+              className="font-semibold text-sm sm:text-base text-card-foreground hover:text-blue-600 transition-colors truncate block"
             >
               {question.author.username}
             </Link>
@@ -306,7 +307,7 @@ export default function QuestionCard({ question }: QuestionCardProps) {
               <MoreHorizontal className="w-5 h-5" />
             </button>
             {showMenu && (
-              <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10 py-1">
+              <div className="absolute right-0 mt-1 w-48 bg-card rounded-lg shadow-lg border border-border z-10 py-1">
                 <button
                   onClick={handleDelete}
                   disabled={deleting || !isOwner}
@@ -340,7 +341,7 @@ export default function QuestionCard({ question }: QuestionCardProps) {
 
       {/* Question Title */}
       <Link href={`/question/${question._id}`}>
-        <h2 className="text-base sm:text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors cursor-pointer mb-2 line-clamp-3">
+        <h2 className="text-base sm:text-lg font-semibold text-card-foreground hover:text-blue-600 transition-colors cursor-pointer mb-2 line-clamp-3">
           {question.title}
         </h2>
       </Link>

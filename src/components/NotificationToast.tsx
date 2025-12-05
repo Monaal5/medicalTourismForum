@@ -53,7 +53,7 @@ export function NotificationToast({ notification, onClose }: NotificationToastPr
 
     return (
         <div
-            className="fixed top-20 right-4 bg-white shadow-lg rounded-lg p-4 border-l-4 border-blue-600 animate-slide-in cursor-pointer hover:shadow-xl transition-shadow z-50 max-w-sm"
+            className="bg-white shadow-lg rounded-lg p-4 border-l-4 border-blue-600 animate-slide-in cursor-pointer hover:shadow-xl transition-shadow max-w-sm pointer-events-auto"
             onClick={handleClick}
         >
             <div className="flex items-start space-x-3">

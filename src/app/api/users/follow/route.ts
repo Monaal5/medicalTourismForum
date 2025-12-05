@@ -30,9 +30,9 @@ export async function POST(request: Request) {
 
         console.log("Clerk User ID:", clerkUserId);
 
-        // Find current user in Sanity by Clerk ID (as _id)
+        // Find current user in Sanity by Clerk ID
         const currentUser = await adminClient.fetch(
-            `*[_type == "user" && _id == $userId][0]`,
+            `*[_type == "user" && clerkId == $userId][0]`,
             { userId: clerkUserId }
         );
 
@@ -103,6 +103,28 @@ export async function POST(request: Request) {
             );
             console.log("Verification - Current user following array:", verifyUser?.following);
 
+            // Create notification for the target user
+            try {
+                await adminClient.create({
+                    _type: "notification",
+                    type: "follow",
+                    recipient: {
+                        _type: "reference",
+                        _ref: targetSanityId,
+                    },
+                    sender: {
+                        _type: "reference",
+                        _ref: currentSanityId,
+                    },
+                    read: false,
+                    createdAt: new Date().toISOString(),
+                });
+                console.log("✓ Notification created");
+            } catch (notifError) {
+                console.error("Failed to create notification:", notifError);
+                // Don't fail the request if notification creation fails
+            }
+
         } else if (action === "unfollow") {
             console.log("✓ Unfollowing user...");
             // Remove target from current user's following
@@ -147,7 +169,7 @@ export async function GET(request: Request) {
         }
 
         const user = await adminClient.fetch(
-            `*[_type == "user" && _id == $userId][0]{ following }`,
+            `*[_type == "user" && clerkId == $userId][0]{ following }`,
             { userId: clerkUserId }
         );
 

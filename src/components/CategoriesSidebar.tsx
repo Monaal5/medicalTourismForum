@@ -47,7 +47,7 @@ export default function CategoriesSidebar({
   if (loading) {
     return (
       <div
-        className={`bg-white border border-gray-200 rounded-lg p-4 ${className}`}
+        className={`bg-card border border-border rounded-lg p-4 ${className}`}
       >
         <div className="space-y-3">
           <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
@@ -65,7 +65,7 @@ export default function CategoriesSidebar({
   if (error) {
     return (
       <div
-        className={`bg-white border border-red-200 rounded-lg p-4 ${className}`}
+        className={`bg-card border border-red-200 rounded-lg p-4 ${className}`}
       >
         <div className="text-center">
           <p className="text-red-600 text-sm mb-2">Failed to load categories</p>
@@ -84,7 +84,7 @@ export default function CategoriesSidebar({
 
   return (
     <div
-      className={`bg-white border border-gray-200 rounded-lg overflow-hidden ${className}`}
+      className={`bg-card border border-border rounded-lg overflow-hidden ${className}`}
     >
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">

@@ -17,10 +17,10 @@ export default async function TrendingTopics() {
     const trendingCategories = await adminClient.fetch(query);
 
     return (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mt-6">
+        <div className="bg-card rounded-lg shadow-sm border border-border p-4 mt-6">
             <div className="flex items-center space-x-2 mb-4">
                 <TrendingUp className="w-5 h-5 text-red-500" />
-                <h2 className="font-bold text-gray-900">Trending Topics</h2>
+                <h2 className="font-bold text-card-foreground">Trending Topics</h2>
             </div>
             <div className="space-y-3">
                 {trendingCategories.map((category: any) => (
