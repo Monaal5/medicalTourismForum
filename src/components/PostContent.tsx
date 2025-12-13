@@ -9,6 +9,9 @@ import {
   Share,
   MoreHorizontal,
   Trash2,
+  ChevronLeft,
+  ChevronRight,
+  Video
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -23,15 +26,37 @@ interface PostWithDetails {
   _id: string;
   postTitle: string;
   body?: any[];
-  image?: any;
+  image?: {
+    _type: 'image';
+    asset: {
+      url?: string;
+      _ref?: string;
+    };
+    alt?: string;
+  };
+  contentGallery?: Array<{
+    _type: 'image' | 'file';
+    asset: {
+      url?: string;
+      _ref?: string;
+    };
+    alt?: string;
+    title?: string;
+  }>;
   publishedAt: string;
   author: {
     username: string;
     imageUrl: string;
     clerkId?: string;
   };
-  subreddit: {
+  subreddit?: {
     title: string;
+    slug: {
+      current: string;
+    };
+  };
+  category?: {
+    name: string;
     slug: {
       current: string;
     };
@@ -56,7 +81,7 @@ interface CommentWithDetails {
 interface PostContentProps {
   post: PostWithDetails;
   comments: CommentWithDetails[];
-  onCommentAdded?: () => void; // Optional callback to notify parent of new comment
+  onCommentAdded?: () => void;
 }
 
 export default function PostContent({ post, comments, onCommentAdded }: PostContentProps) {
@@ -65,6 +90,7 @@ export default function PostContent({ post, comments, onCommentAdded }: PostCont
   const [submittingComment, setSubmittingComment] = useState(false);
   const [newComment, setNewComment] = useState("");
   const [deletingPost, setDeletingPost] = useState(false);
+  const [currentSlide, setCurrentSlide] = useState(0);
 
   // Check if current user is the post author
   const isAuthor = user?.id === post.author.clerkId;
@@ -110,15 +136,11 @@ export default function PostContent({ post, comments, onCommentAdded }: PostCont
       if (result.error) {
         console.error("Error creating comment:", result.error);
       } else {
-        // Clear the new comment input
         setNewComment("");
-        // Wait for Sanity to process
         await new Promise(resolve => setTimeout(resolve, 500));
-        // Notify the parent component to re-fetch or update comments
         if (onCommentAdded) {
           onCommentAdded();
         } else {
-          // Fallback to reload if no callback is provided (less ideal)
           window.location.reload();
         }
       }
@@ -155,13 +177,10 @@ export default function PostContent({ post, comments, onCommentAdded }: PostCont
       if (result.error) {
         console.error("Error creating reply:", result.error);
       } else {
-        // Wait for Sanity to process
         await new Promise(resolve => setTimeout(resolve, 500));
-        // Notify the parent component to re-fetch or update comments
         if (onCommentAdded) {
           onCommentAdded();
         } else {
-          // Fallback to reload if no callback is provided (less ideal)
           window.location.reload();
         }
       }
@@ -184,7 +203,6 @@ export default function PostContent({ post, comments, onCommentAdded }: PostCont
       const result = await response.json();
 
       if (result.success) {
-        // Redirect to home page
         router.push("/");
       } else {
         alert(result.error || "Failed to delete post");
@@ -195,6 +213,37 @@ export default function PostContent({ post, comments, onCommentAdded }: PostCont
     } finally {
       setDeletingPost(false);
     }
+  };
+
+  // Media Logic
+  const mediaItems = post.contentGallery?.length
+    ? post.contentGallery
+    : (post.image ? [{ ...post.image, _type: 'image' as const }] : []);
+
+  const handleNextSlide = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (currentSlide < mediaItems.length - 1) {
+      setCurrentSlide(prev => prev + 1);
+    }
+  };
+
+  const handlePrevSlide = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (currentSlide > 0) {
+      setCurrentSlide(prev => prev - 1);
+    }
+  };
+
+  const getMediaUrl = (item: any) => {
+    if (item.asset?.url) return item.asset.url;
+    if (item._type === 'image' && item.asset?._ref) {
+      try {
+        return urlFor(item).url();
+      } catch (e) { console.error(e); return ""; }
+    }
+    return "";
   };
 
   return (
@@ -209,8 +258,8 @@ export default function PostContent({ post, comments, onCommentAdded }: PostCont
                 onClick={() => handlePostVote("upvote")}
                 disabled={!postCanVote || postVoteLoading}
                 className={`p-1 rounded ${postUserVote === "upvote"
-                    ? "text-orange-500"
-                    : "text-gray-500 hover:bg-gray-200"
+                  ? "text-orange-500"
+                  : "text-gray-500 hover:bg-gray-200"
                   } ${!postCanVote || postVoteLoading ? "opacity-50 cursor-not-allowed" : ""}`}
                 suppressHydrationWarning
               >
@@ -223,8 +272,8 @@ export default function PostContent({ post, comments, onCommentAdded }: PostCont
                 onClick={() => handlePostVote("downvote")}
                 disabled={!postCanVote || postVoteLoading}
                 className={`p-1 rounded ${postUserVote === "downvote"
-                    ? "text-blue-500"
-                    : "text-gray-500 hover:bg-gray-200"
+                  ? "text-blue-500"
+                  : "text-gray-500 hover:bg-gray-200"
                   } ${!postCanVote || postVoteLoading ? "opacity-50 cursor-not-allowed" : ""}`}
                 suppressHydrationWarning
               >
@@ -235,11 +284,19 @@ export default function PostContent({ post, comments, onCommentAdded }: PostCont
             {/* Post Content */}
             <div className="flex-1 p-4">
               <div className="flex items-center text-sm text-gray-500 mb-2">
-                <Link href={`/community/${post.subreddit.slug.current}`}>
-                  <span className="font-medium text-blue-600 hover:underline">
-                    c/{post.subreddit.title}
-                  </span>
-                </Link>
+                {post.subreddit ? (
+                  <Link href={`/communities/${post.subreddit.slug.current}`}>
+                    <span className="font-medium text-blue-600 hover:underline">
+                      {post.subreddit.title}
+                    </span>
+                  </Link>
+                ) : post.category ? (
+                  <Link href={`/categories/${post.category.slug.current}`}>
+                    <span className="font-medium text-blue-600 hover:underline">
+                      {post.category.name}
+                    </span>
+                  </Link>
+                ) : null}
                 <span className="mx-1">•</span>
                 <span>Posted by u/{post.author.username}</span>
                 <span className="mx-1">•</span>
@@ -282,16 +339,66 @@ export default function PostContent({ post, comments, onCommentAdded }: PostCont
                 </div>
               )}
 
-              {post.image && (
-                <div className="mb-4 flex justify-center">
-                  <Image
-                    src={urlFor(post.image).width(800).height(600).url()}
-                    alt={post.image.alt || "Post image"}
-                    width={800}
-                    height={600}
-                    className="rounded-lg w-full md:w-1/2 h-auto object-cover"
-                    unoptimized
-                  />
+              {/* Media Carousel */}
+              {mediaItems.length > 0 && (
+                <div className="relative w-full bg-black aspect-[4/5] sm:aspect-video flex items-center justify-center mb-4 rounded-lg overflow-hidden">
+                  <div className="relative w-full h-full">
+                    {mediaItems[currentSlide]?._type === 'file' || mediaItems[currentSlide]?.asset?.url?.toLowerCase().endsWith('.mp4') ? (
+                      <video
+                        src={getMediaUrl(mediaItems[currentSlide])}
+                        controls
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <div className="relative w-full h-full">
+                        {getMediaUrl(mediaItems[currentSlide]) && (
+                          <Image
+                            src={getMediaUrl(mediaItems[currentSlide])}
+                            alt={mediaItems[currentSlide]?.alt || "Post image"}
+                            fill
+                            className="object-contain"
+                            unoptimized
+                          />
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Controls */}
+                  {mediaItems.length > 1 && (
+                    <>
+                      {currentSlide > 0 && (
+                        <button
+                          onClick={handlePrevSlide}
+                          className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-1.5 rounded-full hover:bg-black/70 transition-colors z-10"
+                        >
+                          <ChevronLeft className="w-6 h-6" />
+                        </button>
+                      )}
+                      {currentSlide < mediaItems.length - 1 && (
+                        <button
+                          onClick={handleNextSlide}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-1.5 rounded-full hover:bg-black/70 transition-colors z-10"
+                        >
+                          <ChevronRight className="w-6 h-6" />
+                        </button>
+                      )}
+
+                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2 z-10">
+                        {mediaItems.map((_, idx) => (
+                          <div
+                            key={idx}
+                            className={`w-2 h-2 rounded-full transition-colors ${idx === currentSlide ? 'bg-blue-500' : 'bg-white/50'
+                              }`}
+                          />
+                        ))}
+                      </div>
+
+                      <div className="absolute top-4 right-4 bg-black/60 text-white px-2 py-1 text-sm rounded-full">
+                        {currentSlide + 1}/{mediaItems.length}
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 

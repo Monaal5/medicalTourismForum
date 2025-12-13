@@ -36,9 +36,9 @@ function AskQuestionPageContent() {
   const [error, setError] = useState("");
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
-  const [showCategoryForm, setShowCategoryForm] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState("");
-  const [creatingCategory, setCreatingCategory] = useState(false);
+  const [existingTags, setExistingTags] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
 
   // All hooks must be called before any conditional returns
   useEffect(() => {
@@ -54,7 +54,20 @@ function AskQuestionPageContent() {
   useEffect(() => {
     // Fetch categories
     fetchCategories();
+    fetchTags();
   }, []);
+
+  const fetchTags = async () => {
+    try {
+      const response = await fetch("/api/tags");
+      if (response.ok) {
+        const data = await response.json();
+        setExistingTags(data.tags || []);
+      }
+    } catch (error) {
+      console.error("Error fetching tags:", error);
+    }
+  };
 
   const fetchCategories = async () => {
     try {
@@ -89,45 +102,7 @@ function AskQuestionPageContent() {
     );
   }
 
-  const handleCreateCategory = async () => {
-    if (!newCategoryName.trim() || !user) return;
 
-    setCreatingCategory(true);
-    const toastId = "create-category";
-    toast.loading("Creating category...", { id: toastId });
-
-    try {
-      const response = await fetch("/api/categories", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: newCategoryName.trim(),
-          icon: "Heart",
-          color: "#3b82f6",
-          userId: user.id,
-          userEmail: user.primaryEmailAddress?.emailAddress,
-          userFullName: user.fullName,
-          userImageUrl: user.imageUrl,
-        }),
-      });
-
-      const result = await response.json();
-      if (result.error) {
-        toast.error("Failed to create category", { id: toastId });
-      } else {
-        toast.success("Category created successfully!", { id: toastId });
-        setNewCategoryName("");
-        setShowCategoryForm(false);
-        await fetchCategories();
-        if (result.category) setSelectedCategory(result.category._id);
-      }
-    } catch (error) {
-      console.error("Error creating category:", error);
-      toast.error("Failed to create category", { id: toastId });
-    } finally {
-      setCreatingCategory(false);
-    }
-  };
 
   const handleAddTag = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && tagInput.trim()) {
@@ -151,6 +126,12 @@ function AskQuestionPageContent() {
     setLoading(true);
     setError("");
 
+    // Add pending tag input if exists
+    let finalTags = [...tags];
+    if (tagInput.trim() && !tags.includes(tagInput.trim()) && tags.length < 5) {
+      finalTags.push(tagInput.trim());
+    }
+
     try {
       const response = await fetch("/api/questions", {
         method: "POST",
@@ -159,7 +140,7 @@ function AskQuestionPageContent() {
           title: title.trim(),
           description: description.trim() || undefined,
           categoryId: selectedCategory || undefined,
-          tags: tags.length > 0 ? tags : undefined,
+          tags: finalTags.length > 0 ? finalTags : undefined,
           userId: user.id,
           userEmail: user.primaryEmailAddress?.emailAddress,
           userFullName: user.fullName,
@@ -263,47 +244,7 @@ function AskQuestionPageContent() {
                   ))}
                 </select>
 
-                {!showCategoryForm ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowCategoryForm(true)}
-                    className="text-sm text-blue-600 hover:text-blue-700 flex items-center space-x-1"
-                  >
-                    <Plus className="w-3 h-3" />
-                    <span>Create new category</span>
-                  </button>
-                ) : (
-                  <div className="border border-gray-200 rounded-md p-3 space-y-2">
-                    <Input
-                      placeholder="New category name"
-                      value={newCategoryName}
-                      onChange={(e) => setNewCategoryName(e.target.value)}
-                      maxLength={50}
-                    />
-                    <div className="flex space-x-2">
-                      <Button
-                        type="button"
-                        size="sm"
-                        onClick={handleCreateCategory}
-                        disabled={!newCategoryName.trim() || creatingCategory}
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
-                      >
-                        {creatingCategory ? "Creating..." : "Create"}
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setShowCategoryForm(false);
-                          setNewCategoryName("");
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                )}
+
               </div>
             </div>
 
@@ -320,13 +261,43 @@ function AskQuestionPageContent() {
                   id="tags"
                   placeholder="Type a tag and press Enter"
                   value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
+                  onChange={(e) => {
+                    setTagInput(e.target.value);
+                    setShowSuggestions(true);
+                  }}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} // Delay to allow click
+                  onFocus={() => setShowSuggestions(true)}
                   onKeyDown={handleAddTag}
                   maxLength={20}
                 />
                 <p className="text-sm text-gray-500 mt-1">
                   Press Enter to add tags. Maximum 5 tags.
                 </p>
+
+                {/* Tag Suggestions */}
+                {tagInput && showSuggestions && (
+                  <div className="absolute z-10 w-full max-w-md bg-white border border-gray-200 rounded-md shadow-lg mt-1">
+                    {existingTags
+                      .filter(tag => tag.toLowerCase().includes(tagInput.toLowerCase()) && !tags.includes(tag))
+                      .slice(0, 5) // Limit to 5 suggestions
+                      .map((tag, index) => (
+                        <div
+                          key={index}
+                          className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                          onClick={() => {
+                            if (!tags.includes(tag) && tags.length < 5) {
+                              setTags([...tags, tag]);
+                              setTagInput("");
+                              setShowSuggestions(false);
+                            }
+                          }}
+                        >
+                          <Hash className="w-3 h-3 inline mr-2 text-gray-400" />
+                          {tag}
+                        </div>
+                      ))}
+                  </div>
+                )}
 
                 {tags.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-3">

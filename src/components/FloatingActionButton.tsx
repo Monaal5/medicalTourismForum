@@ -28,7 +28,7 @@ export default function FloatingActionButton() {
     ];
 
     return (
-        <div className="fixed bottom-20 right-4 z-[100]">
+        <div className="fixed bottom-20 right-4 z-[100]" suppressHydrationWarning>
             {/* Action Buttons */}
             {isOpen && (
                 <div className="absolute bottom-16 right-0 flex flex-col gap-3 mb-2">
@@ -58,6 +58,7 @@ export default function FloatingActionButton() {
                 className={`w-14 h-14 ${isOpen ? "bg-red-600 hover:bg-red-700" : "bg-blue-600 hover:bg-blue-700"
                     } text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center group`}
                 aria-label={isOpen ? "Close menu" : "Open menu"}
+                suppressHydrationWarning
             >
                 {isOpen ? (
                     <X className="w-6 h-6 group-hover:rotate-90 transition-transform duration-300" />

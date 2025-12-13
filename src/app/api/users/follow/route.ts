@@ -59,6 +59,13 @@ export async function POST(request: Request) {
         console.log("Current Sanity ID:", currentSanityId);
         console.log("Target Sanity ID:", targetSanityId);
 
+        if (currentSanityId === targetSanityId) {
+            return NextResponse.json(
+                { error: "You cannot follow yourself" },
+                { status: 400 }
+            );
+        }
+
         if (action === "follow") {
             console.log("✓ Following user...");
 

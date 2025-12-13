@@ -260,13 +260,7 @@ export default function CategoriesPage() {
               Manage question categories for better organization
             </p>
           </div>
-          <Button
-            onClick={() => setShowForm(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center space-x-2"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Category</span>
-          </Button>
+          {/* Add Category button removed */}
         </div>
 
         {/* Category Form */}
@@ -402,23 +396,7 @@ export default function CategoriesPage() {
                   >
                     <Edit className="w-4 h-4" />
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleDelete(category._id);
-                    }}
-                    disabled={deletingId === category._id}
-                  >
-                    {deletingId === category._id ? (
-                      <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <Trash2 className="w-4 h-4" />
-                    )}
-                  </Button>
+                  {/* Delete button removed */}
                 </div>
               </div>
 
@@ -449,12 +427,7 @@ export default function CategoriesPage() {
             <p className="text-gray-500 mb-4">
               Create your first category to organize questions better!
             </p>
-            <Button
-              onClick={() => setShowForm(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              Create Category
-            </Button>
+            {/* Create Category button removed */}
           </div>
         )}
       </div>

@@ -2,9 +2,13 @@
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
+import Image from '@tiptap/extension-image';
+import TextAlign from '@tiptap/extension-text-align';
+import Underline from '@tiptap/extension-underline';
 import {
     Bold,
     Italic,
+    Underline as UnderlineIcon,
     List,
     ListOrdered,
     Heading1,
@@ -12,9 +16,14 @@ import {
     Quote,
     Code,
     Undo,
-    Redo
+    Redo,
+    AlignLeft,
+    AlignCenter,
+    AlignRight,
+    AlignJustify,
+    Image as ImageIcon
 } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 
 interface RichTextEditorProps {
     value: string;
@@ -34,7 +43,12 @@ export default function RichTextEditor({ value, onChange, placeholder = "Write y
             Placeholder.configure({
                 placeholder,
             }),
-        ],
+            Image,
+            Underline,
+            TextAlign.configure({
+                types: ['heading', 'paragraph'],
+            }),
+        ] as any,
         content: value,
         editorProps: {
             attributes: {
@@ -52,6 +66,14 @@ export default function RichTextEditor({ value, onChange, placeholder = "Write y
             editor.commands.setContent(value);
         }
     }, [value, editor]);
+
+    const addImage = useCallback(() => {
+        const url = window.prompt('URL')
+
+        if (url && editor) {
+            (editor.chain().focus() as any).setImage({ src: url }).run()
+        }
+    }, [editor])
 
     if (!editor) {
         return null;
@@ -96,6 +118,39 @@ export default function RichTextEditor({ value, onChange, placeholder = "Write y
                     icon={Italic}
                     label="Italic"
                 />
+                <ToolbarButton
+                    onClick={() => editor.chain().focus().toggleUnderline().run()}
+                    isActive={editor.isActive('underline')}
+                    icon={UnderlineIcon}
+                    label="Underline"
+                />
+
+                <div className="w-px h-6 bg-gray-300 mx-1" />
+
+                <ToolbarButton
+                    onClick={() => (editor.chain().focus() as any).setTextAlign('left').run()}
+                    isActive={editor.isActive({ textAlign: 'left' })}
+                    icon={AlignLeft}
+                    label="Align Left"
+                />
+                <ToolbarButton
+                    onClick={() => (editor.chain().focus() as any).setTextAlign('center').run()}
+                    isActive={editor.isActive({ textAlign: 'center' })}
+                    icon={AlignCenter}
+                    label="Align Center"
+                />
+                <ToolbarButton
+                    onClick={() => (editor.chain().focus() as any).setTextAlign('right').run()}
+                    isActive={editor.isActive({ textAlign: 'right' })}
+                    icon={AlignRight}
+                    label="Align Right"
+                />
+                <ToolbarButton
+                    onClick={() => (editor.chain().focus() as any).setTextAlign('justify').run()}
+                    isActive={editor.isActive({ textAlign: 'justify' })}
+                    icon={AlignJustify}
+                    label="Justify"
+                />
 
                 <div className="w-px h-6 bg-gray-300 mx-1" />
 
@@ -110,6 +165,15 @@ export default function RichTextEditor({ value, onChange, placeholder = "Write y
                     isActive={editor.isActive('heading', { level: 2 })}
                     icon={Heading2}
                     label="Heading 2"
+                />
+
+                <div className="w-px h-6 bg-gray-300 mx-1" />
+
+                <ToolbarButton
+                    onClick={addImage}
+                    icon={ImageIcon}
+                    label="Add Image"
+                    isActive={false}
                 />
 
                 <div className="w-px h-6 bg-gray-300 mx-1" />

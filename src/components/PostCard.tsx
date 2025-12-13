@@ -11,13 +11,15 @@ import {
   ThumbsUp,
   ThumbsDown,
   Loader2,
+  ChevronLeft,
+  ChevronRight,
+  Video
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useVoting } from "@/hooks/useVoting";
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-// import { Post } from "@/sanity.types";
 import { urlFor } from "@/sanity/lib/image";
 import toast from "react-hot-toast";
 
@@ -26,23 +28,41 @@ interface PostWithDetails {
   postTitle: string;
   body?: any[];
   image?: {
+    _type: 'image';
     asset: {
-      url: string;
+      url?: string;
+      _ref?: string;
     };
     alt?: string;
   };
+  contentGallery?: Array<{
+    _type: 'image' | 'file';
+    asset: {
+      url?: string;
+      _ref?: string;
+    };
+    alt?: string;
+    title?: string;
+  }>;
   author: {
     username: string;
     imageUrl: string;
     clerkId?: string;
   };
-  subreddit: {
+  subreddit?: {
     title: string;
     slug: {
       current: string;
     };
   };
+  category?: {
+    name: string;
+    slug: {
+      current: string;
+    };
+  };
   publishedAt: string;
+  tags?: string[];
   commentCount?: number;
 }
 
@@ -56,6 +76,7 @@ export default function PostCard({ post }: PostCardProps) {
   const [deleting, setDeleting] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [currentSanityUsername, setCurrentSanityUsername] = useState<string | null>(null);
+  const [currentSlide, setCurrentSlide] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const { voteCount, userVote, loading, vote, canVote } = useVoting(
@@ -66,29 +87,16 @@ export default function PostCard({ post }: PostCardProps) {
   // Fetch current user's Sanity username
   useEffect(() => {
     if (user) {
-      console.log('Fetching Sanity username for user...');
       fetch('/api/user/current')
-        .then(res => {
-          console.log('Response status:', res.status);
-          return res.json();
-        })
+        .then(res => res.json())
         .then(data => {
-          console.log('Fetched Sanity user data:', data);
           if (data && data.username) {
-            console.log('Setting currentSanityUsername to:', data.username);
             setCurrentSanityUsername(data.username);
-          } else if (data && data.error) {
-            console.error('Error from API:', data.error);
-          } else {
-            console.warn('No username in response:', data);
           }
         })
         .catch(err => console.error('Error fetching Sanity user:', err));
     }
   }, [user]);
-
-  // Debug: Log image data
-  console.log("Post image data:", post.image);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -135,7 +143,6 @@ export default function PostCard({ post }: PostCardProps) {
 
       if (response.ok) {
         toast.success("Post deleted successfully!", { id: toastId });
-        // Refresh the page or redirect
         router.refresh();
       } else {
         toast.error(result.error || "Failed to delete post", { id: toastId });
@@ -153,15 +160,43 @@ export default function PostCard({ post }: PostCardProps) {
   const isOwner = currentSanityUsername && post.author.username &&
     currentSanityUsername.toLowerCase() === post.author.username.toLowerCase();
 
-  // Debug logging - only log when values change
-  useEffect(() => {
-    console.log('PostCard Ownership Debug:', {
-      currentSanityUsername,
-      authorUsername: post.author.username,
-      isOwner,
-      comparison: `${currentSanityUsername?.toLowerCase()} === ${post.author.username?.toLowerCase()}`
-    });
-  }, [currentSanityUsername, post.author.username, isOwner]);
+  // Media Logic
+  const mediaItems = post.contentGallery?.length
+    ? post.contentGallery
+    : (post.image ? [{ ...post.image, _type: 'image' as const }] : []);
+
+  const handleNextSlide = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (currentSlide < mediaItems.length - 1) {
+      setCurrentSlide(prev => prev + 1);
+    }
+  };
+
+  const handlePrevSlide = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (currentSlide > 0) {
+      setCurrentSlide(prev => prev - 1);
+    }
+  };
+
+  const getMediaUrl = (item: any) => {
+    if (item.asset?.url) return item.asset.url;
+    // Fallback for image refs if url not present
+    if (item._type === 'image' && item.asset?._ref) {
+      try {
+        return urlFor(item).url();
+      } catch (e) {
+        console.error("Error generating URL for image:", e);
+        return "";
+      }
+    }
+    // Simple fallback for file refs if we can construct it manually (risky without dataset info but works if standard)
+    // Actually, create-post API uploads result in asset objects with URLs usually if we fetch them right.
+    // If not, we might be missing the URL for videos if not projected.
+    return "";
+  };
 
   return (
     <div
@@ -199,12 +234,21 @@ export default function PostCard({ post }: PostCardProps) {
                   })}
                 </span>
                 <span className="hidden sm:inline">•</span>
-                <Link
-                  href={`/community/${post.subreddit.slug.current}`}
-                  className="hover:underline hidden sm:inline truncate"
-                >
-                  c/{post.subreddit.title}
-                </Link>
+                {post.subreddit ? (
+                  <Link
+                    href={`/communities/${post.subreddit.slug.current}`}
+                    className="hover:underline hidden sm:inline truncate"
+                  >
+                    {post.subreddit.title}
+                  </Link>
+                ) : post.category ? (
+                  <Link
+                    href={`/categories/${post.category.slug.current}`}
+                    className="hover:underline hidden sm:inline truncate"
+                  >
+                    {post.category.name}
+                  </Link>
+                ) : null}
               </div>
             </div>
           </div>
@@ -213,13 +257,7 @@ export default function PostCard({ post }: PostCardProps) {
           {user && (
             <div className="relative flex-shrink-0" ref={menuRef}>
               <button
-                onClick={() => {
-                  console.log('=== DELETE MENU CLICKED ===');
-                  console.log('Is Owner:', isOwner);
-                  console.log('Current Sanity Username:', currentSanityUsername);
-                  console.log('Author Username:', post.author.username);
-                  setShowMenu(!showMenu);
-                }}
+                onClick={() => setShowMenu(!showMenu)}
                 className="text-gray-400 hover:text-gray-600 p-1.5 rounded-full hover:bg-gray-100 transition-colors"
                 suppressHydrationWarning
                 disabled={deleting}
@@ -258,7 +296,7 @@ export default function PostCard({ post }: PostCardProps) {
           </h2>
         </Link>
 
-        {/* Post Body */}
+        {/* Post Body - Caption */}
         {post.body && (
           <div className="text-gray-700 text-sm sm:text-base mb-3 line-clamp-2 sm:line-clamp-3">
             {post.body.map((block: any, index: number) => (
@@ -272,17 +310,89 @@ export default function PostCard({ post }: PostCardProps) {
         )}
       </div>
 
-      {/* Post Image */}
-      {post.image && (
-        <div className="px-4 sm:px-6 pb-3">
-          <Image
-            src={urlFor(post.image).width(600).height(400).url()}
-            alt={post.image.alt || "Post image"}
-            width={600}
-            height={400}
-            className="rounded-lg w-full md:w-1/2 h-auto mx-auto object-cover"
-            unoptimized
-          />
+      {/* Tags */}
+      {post.tags && post.tags.length > 0 && (
+        <div className="px-4 sm:px-6 pb-3 -mt-2">
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
+            {post.tags.map((tag, index) => (
+              <Link
+                key={index}
+                href={`/search?q=${tag}`}
+                className="px-2 py-1 bg-blue-50 text-blue-600 text-xs sm:text-sm rounded-full hover:bg-blue-100 cursor-pointer transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                #{tag}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Media Carousel */}
+      {mediaItems.length > 0 && (
+        <div className="relative w-full bg-black aspect-[4/5] sm:aspect-video flex items-center justify-center mb-1">
+          {/* Current Slide */}
+          <div className="relative w-full h-full">
+            {mediaItems[currentSlide]?._type === 'file' || mediaItems[currentSlide]?.asset?.url?.toLowerCase().endsWith('.mp4') ? (
+              <video
+                src={getMediaUrl(mediaItems[currentSlide])}
+                controls
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <div className="relative w-full h-full">
+                {/* Use Image if URL is valid, else fallback */}
+                {getMediaUrl(mediaItems[currentSlide]) && (
+                  <Image
+                    src={getMediaUrl(mediaItems[currentSlide])}
+                    alt={mediaItems[currentSlide]?.alt || "Post content"}
+                    fill
+                    className="object-contain"
+                    unoptimized
+                  />
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Controls */}
+          {mediaItems.length > 1 && (
+            <>
+              {currentSlide > 0 && (
+                <button
+                  onClick={handlePrevSlide}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-1.5 rounded-full hover:bg-black/70 transition-colors z-10"
+                >
+                  <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+                </button>
+              )}
+              {currentSlide < mediaItems.length - 1 && (
+                <button
+                  onClick={handleNextSlide}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-1.5 rounded-full hover:bg-black/70 transition-colors z-10"
+                >
+                  <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
+                </button>
+              )}
+              {/* Dots Indicator */}
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex space-x-1.5 z-10">
+                {mediaItems.map((_, idx) => (
+                  <div
+                    key={idx}
+                    className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full transition-colors ${idx === currentSlide ? 'bg-blue-500' : 'bg-white/50'
+                      }`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Item Count Badges */}
+          {mediaItems.length > 1 && (
+            <div className="absolute top-2 right-2 bg-black/60 text-white px-2 py-1 text-xs rounded-full">
+              {currentSlide + 1}/{mediaItems.length}
+            </div>
+          )}
         </div>
       )}
 

@@ -17,16 +17,16 @@ export async function GET(request: Request) {
 
 
         // Find the Sanity user ID based on the Clerk ID
-        const userQuery = defineQuery(`*[_type == "user" && (clerkId == $userId || _id == $userId)][0]._id`);
-        const sanityUserId = await adminClient.fetch(userQuery, { userId });
+        const userQueryNotifyCount = defineQuery(`*[_type == "user" && (clerkId == $userId || _id == $userId)][0]._id`);
+        const sanityUserId = await adminClient.fetch(userQueryNotifyCount, { userId });
 
         if (!sanityUserId) {
             return NextResponse.json({ success: true, count: 0 });
         }
 
-        const query = defineQuery(`count(*[_type == "notification" && recipient._ref == $sanityUserId && !read])`);
+        const unreadNotificationsCountQuery = defineQuery(`count(*[_type == "notification" && recipient._ref == $sanityUserId && !read])`);
 
-        const count = await adminClient.fetch(query, { sanityUserId });
+        const count = await adminClient.fetch(unreadNotificationsCountQuery, { sanityUserId });
 
         return NextResponse.json({
             success: true,

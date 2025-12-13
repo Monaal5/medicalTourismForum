@@ -22,7 +22,7 @@ export async function DELETE(
 
     // Get the current user's Sanity username
     const currentSanityUser = await adminClient.fetch(
-      `*[_type == "user" && _id == $userId][0]{ username }`,
+      `*[_type == "user" && clerkId == $userId][0]{ username }`,
       { userId: clerkUser.id }
     );
 
@@ -58,7 +58,7 @@ export async function DELETE(
     if (post.author?.username?.toLowerCase() !== currentSanityUser.username?.toLowerCase()) {
       console.log('❌ Ownership check failed');
       return NextResponse.json(
-        { 
+        {
           error: "You can only delete your own posts",
           details: `Author: ${post.author?.username}, Current: ${currentSanityUser.username}`
         },

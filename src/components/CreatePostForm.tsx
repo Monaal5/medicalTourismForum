@@ -162,7 +162,7 @@ export default function CreatePostForm({ community }: CreatePostFormProps) {
       <div className="max-w-4xl mx-auto p-4">
         <div className="mb-6">
           <Link
-            href={`/community/${community.slug.current}`}
+            href={`/communities/${community.slug.current}`}
             className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-4"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />

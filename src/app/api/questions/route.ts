@@ -3,6 +3,7 @@ import { adminClient } from "@/sanity/lib/adminClient";
 import { addUser } from "@/sanity/lib/user/addUser";
 import { generateUsername } from "@/lib/username";
 import { defineQuery } from "groq";
+import { extractHashtags } from "@/lib/hashtags";
 
 export async function GET(request: Request) {
   try {
@@ -132,8 +133,16 @@ export async function POST(request: Request) {
       questionData.description = description;
     }
 
+    const extractedTags = [
+      ...extractHashtags(title),
+      ...extractHashtags(description || ""),
+    ];
+
     if (tags && tags.length > 0) {
-      questionData.tags = tags;
+      // Combine and unique
+      questionData.tags = [...new Set([...tags, ...extractedTags])];
+    } else if (extractedTags.length > 0) {
+      questionData.tags = extractedTags;
     }
 
     if (categoryId) {

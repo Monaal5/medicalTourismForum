@@ -13,6 +13,35 @@
  */
 
 // Source: schema.json
+export type Notification = {
+  _id: string;
+  _type: "notification";
+  _createdAt: string;
+  _updatedAt: string;
+  _rev: string;
+  recipient?: {
+    _ref: string;
+    _type: "reference";
+    _weak?: boolean;
+    [internalGroqTypeReferenceTo]?: "user";
+  };
+  sender?: {
+    _ref: string;
+    _type: "reference";
+    _weak?: boolean;
+    [internalGroqTypeReferenceTo]?: "user";
+  };
+  type?: "answer" | "follow" | "vote";
+  question?: {
+    _ref: string;
+    _type: "reference";
+    _weak?: boolean;
+    [internalGroqTypeReferenceTo]?: "question";
+  };
+  read?: boolean;
+  createdAt?: string;
+};
+
 export type Vote = {
   _id: string;
   _type: "vote";
@@ -161,22 +190,6 @@ export type Question = {
   updatedAt?: string;
 };
 
-export type Category = {
-  _id: string;
-  _type: "category";
-  _createdAt: string;
-  _updatedAt: string;
-  _rev: string;
-  name?: string;
-  slug?: Slug;
-  description?: string;
-  icon?: string;
-  color?: "blue" | "green" | "red" | "purple" | "orange" | "pink" | "gray";
-  isActive?: boolean;
-  questionCount?: number;
-  createdAt?: string;
-};
-
 export type Post = {
   _id: string;
   _type: "post";
@@ -185,11 +198,18 @@ export type Post = {
   _rev: string;
   postTitle?: string;
   originalTitle?: string;
+  tags?: Array<string>;
   author?: {
     _ref: string;
     _type: "reference";
     _weak?: boolean;
     [internalGroqTypeReferenceTo]?: "user";
+  };
+  category?: {
+    _ref: string;
+    _type: "reference";
+    _weak?: boolean;
+    [internalGroqTypeReferenceTo]?: "category";
   };
   subreddit?: {
     _ref: string;
@@ -228,9 +248,48 @@ export type Post = {
     alt?: string;
     _type: "image";
   };
+  contentGallery?: Array<{
+    asset?: {
+      _ref: string;
+      _type: "reference";
+      _weak?: boolean;
+      [internalGroqTypeReferenceTo]?: "sanity.imageAsset";
+    };
+    media?: unknown;
+    hotspot?: SanityImageHotspot;
+    crop?: SanityImageCrop;
+    _type: "image";
+    _key: string;
+  } | {
+    asset?: {
+      _ref: string;
+      _type: "reference";
+      _weak?: boolean;
+      [internalGroqTypeReferenceTo]?: "sanity.fileAsset";
+    };
+    media?: unknown;
+    _type: "file";
+    _key: string;
+  }>;
   isReported?: boolean;
   publishedAt?: string;
   isDeleted?: boolean;
+};
+
+export type Category = {
+  _id: string;
+  _type: "category";
+  _createdAt: string;
+  _updatedAt: string;
+  _rev: string;
+  name?: string;
+  slug?: Slug;
+  description?: string;
+  icon?: string;
+  color?: "blue" | "green" | "red" | "purple" | "orange" | "pink" | "gray";
+  isActive?: boolean;
+  questionCount?: number;
+  createdAt?: string;
 };
 
 export type Subreddit = {
@@ -273,8 +332,31 @@ export type User = {
   username?: string;
   email?: string;
   imageUrl?: string;
+  clerkId?: string;
+  bio?: string;
   joinedAt?: string;
   isReported?: boolean;
+  bookmarks?: Array<{
+    _ref: string;
+    _type: "reference";
+    _weak?: boolean;
+    _key: string;
+    [internalGroqTypeReferenceTo]?: "question";
+  }>;
+  followers?: Array<{
+    _ref: string;
+    _type: "reference";
+    _weak?: boolean;
+    _key: string;
+    [internalGroqTypeReferenceTo]?: "user";
+  }>;
+  following?: Array<{
+    _ref: string;
+    _type: "reference";
+    _weak?: boolean;
+    _key: string;
+    [internalGroqTypeReferenceTo]?: "user";
+  }>;
 };
 
 export type SanityImagePaletteSwatch = {
@@ -395,7 +477,7 @@ export type SanityAssetSourceData = {
   url?: string;
 };
 
-export type AllSanitySchemaTypes = Vote | Comment | Answer | Question | Category | Post | Subreddit | User | SanityImagePaletteSwatch | SanityImagePalette | SanityImageDimensions | SanityImageHotspot | SanityImageCrop | SanityFileAsset | SanityImageAsset | SanityImageMetadata | Geopoint | Slug | SanityAssetSourceData;
+export type AllSanitySchemaTypes = Notification | Vote | Comment | Answer | Question | Post | Category | Subreddit | User | SanityImagePaletteSwatch | SanityImagePalette | SanityImageDimensions | SanityImageHotspot | SanityImageCrop | SanityFileAsset | SanityImageAsset | SanityImageMetadata | Geopoint | Slug | SanityAssetSourceData;
 export declare const internalGroqTypeReferenceTo: unique symbol;
 // Source: ./src/app/(app)/communities/page.tsx
 // Variable: communitiesQuery
@@ -484,102 +566,21 @@ export type PostsQueryResult = Array<{
 }>;
 
 // Source: ./src/app/(app)/create-post/page.tsx
-// Variable: subredditsQuery
-// Query: *[_type == "subreddit"] | order(createdAt desc) {    _id,    title,    description,    image,    "moderator": moderator->{username},    createdAt,    slug,  }
-export type SubredditsQueryResult = Array<{
+// Variable: categoriesQuery
+// Query: *[_type == "category"] | order(name asc) {    _id,    name,    slug,    description,    icon,    color,    "questionCount": count(*[_type == "question" && references(^._id)])  }
+export type CategoriesQueryResult = Array<{
   _id: string;
-  title: string | null;
-  description: string | null;
-  image: {
-    asset?: {
-      _ref: string;
-      _type: "reference";
-      _weak?: boolean;
-      [internalGroqTypeReferenceTo]?: "sanity.imageAsset";
-    };
-    media?: unknown;
-    hotspot?: SanityImageHotspot;
-    crop?: SanityImageCrop;
-    alt?: string;
-    _type: "image";
-  } | null;
-  moderator: {
-    username: string | null;
-  } | null;
-  createdAt: string | null;
+  name: string | null;
   slug: Slug | null;
-}>;
-
-// Source: ./src/app/(app)/page.tsx
-// Variable: questionsQuery
-// Query: *[_type == "question" && !isDeleted] | order(createdAt desc) [0...10] {    _id,    title,    description,    author->{      username,      imageUrl,      clerkId    },    category->{      name,      color,      icon    },    tags,    isAnswered,    isDeleted,    createdAt,    "answerCount": count(*[_type == "answer" && references(^._id) && !isDeleted]),    "topAnswer": *[_type == "answer" && references(^._id) && !isDeleted] | order(createdAt asc) [0] {      _id,      content,      author->{        username,        imageUrl,        clerkId      },      createdAt    }  }
-export type QuestionsQueryResult = Array<{
-  _id: string;
-  title: string | null;
   description: string | null;
-  author: {
-    username: string | null;
-    imageUrl: string | null;
-    clerkId: null;
-  } | null;
-  category: {
-    name: string | null;
-    color: "blue" | "gray" | "green" | "orange" | "pink" | "purple" | "red" | null;
-    icon: string | null;
-  } | null;
-  tags: Array<string> | null;
-  isAnswered: boolean | null;
-  isDeleted: boolean | null;
-  createdAt: string | null;
-  answerCount: number;
-  topAnswer: null;
-}>;
-// Variable: homePostsQuery
-// Query: *[_type == "post" && !isDeleted] | order(publishedAt desc) [0...10] {    _id,    postTitle,    body,    image{      asset->{        url,        metadata      },      alt    },    author->{      username,      imageUrl,      clerkId    },    subreddit->{      title,      slug    },    publishedAt,    "commentCount": count(*[_type == "comment" && references(^._id) && !isDeleted])  }
-export type HomePostsQueryResult = Array<{
-  _id: string;
-  postTitle: string | null;
-  body: Array<{
-    children?: Array<{
-      marks?: Array<string>;
-      text?: string;
-      _type: "span";
-      _key: string;
-    }>;
-    style?: "blockquote" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "normal";
-    listItem?: "bullet" | "number";
-    markDefs?: Array<{
-      href?: string;
-      _type: "link";
-      _key: string;
-    }>;
-    level?: number;
-    _type: "block";
-    _key: string;
-  }> | null;
-  image: {
-    asset: {
-      url: string | null;
-      metadata: SanityImageMetadata | null;
-    } | null;
-    alt: string | null;
-  } | null;
-  author: {
-    username: string | null;
-    imageUrl: string | null;
-    clerkId: null;
-  } | null;
-  subreddit: {
-    title: string | null;
-    slug: Slug | null;
-  } | null;
-  publishedAt: string | null;
-  commentCount: number;
+  icon: string | null;
+  color: "blue" | "gray" | "green" | "orange" | "pink" | "purple" | "red" | null;
+  questionCount: number;
 }>;
 
 // Source: ./src/app/(app)/post/[id]/page.tsx
 // Variable: postQuery
-// Query: *[_type == "post" && _id == $id && !isDeleted][0] {        _id,        postTitle,        body,        image,        publishedAt,        author->{          username,          imageUrl,          clerkId        },        subreddit->{          title,          slug        }      }
+// Query: *[_type == "post" && _id == $id && !isDeleted][0] {        _id,        postTitle,        body,        image,        contentGallery[]{          _type,          asset->{            url          },          alt,          title        },        publishedAt,        author->{          username,          imageUrl,          clerkId        },        subreddit->{          title,          slug        },        category->{          name,          slug,          icon        }      }
 export type PostQueryResult = {
   _id: string;
   postTitle: string | null;
@@ -614,19 +615,39 @@ export type PostQueryResult = {
     alt?: string;
     _type: "image";
   } | null;
+  contentGallery: Array<{
+    _type: "file";
+    asset: {
+      url: string | null;
+    } | null;
+    alt: null;
+    title: null;
+  } | {
+    _type: "image";
+    asset: {
+      url: string | null;
+    } | null;
+    alt: null;
+    title: null;
+  }> | null;
   publishedAt: string | null;
   author: {
     username: string | null;
     imageUrl: string | null;
-    clerkId: null;
+    clerkId: string | null;
   } | null;
   subreddit: {
     title: string | null;
     slug: Slug | null;
   } | null;
+  category: {
+    name: string | null;
+    slug: Slug | null;
+    icon: string | null;
+  } | null;
 } | null;
 // Variable: commentsQuery
-// Query: *[_type == "comment" && references($id) && !isDeleted && !defined(parentComment)] | order(createdAt asc) {        _id,        comment,        createdAt,        author->{          username,          imageUrl,          clerkId        }      }
+// Query: *[_type == "comment" && post._ref == $id && !isDeleted] | order(createdAt asc) {        _id,        comment,        createdAt,        author->{          username,          imageUrl,          clerkId        },        parentComment      }
 export type CommentsQueryResult = Array<{
   _id: string;
   comment: string | null;
@@ -634,21 +655,41 @@ export type CommentsQueryResult = Array<{
   author: {
     username: string | null;
     imageUrl: string | null;
-    clerkId: null;
+    clerkId: string | null;
+  } | null;
+  parentComment: {
+    _ref: string;
+    _type: "reference";
+    _weak?: boolean;
+    [internalGroqTypeReferenceTo]?: "comment";
   } | null;
 }>;
 
 // Source: ./src/app/(app)/profile/[username]/page.tsx
 // Variable: userQuery
-// Query: *[_type == "user" && username == $username][0] {    _id,    username,    imageUrl,    bio,    joinedAt,    "questionsCount": count(*[_type == "question" && author._ref == ^._id && !isDeleted]),    "answersCount": count(*[_type == "answer" && author._ref == ^._id && !isDeleted])  }
+// Query: *[_type == "user" && username == $username][0] {    _id,    clerkId,    username,    imageUrl,    bio,    joinedAt,    "questionsCount": count(*[_type == "question" && author._ref == ^._id && !isDeleted]),    "answersCount": count(*[_type == "answer" && author._ref == ^._id && !isDeleted]),    "postsCount": count(*[_type == "post" && author._ref == ^._id && !isDeleted]),    "followersCount": count(coalesce(followers, [])),    "followingCount": count(coalesce(following, [])),    "followers": coalesce(followers, [])[]->{ _id, username, imageUrl },    "following": coalesce(following, [])[]->{ _id, username, imageUrl }  }
 export type UserQueryResult = {
   _id: string;
+  clerkId: string | null;
   username: string | null;
   imageUrl: string | null;
-  bio: null;
+  bio: string | null;
   joinedAt: string | null;
   questionsCount: number;
   answersCount: number;
+  postsCount: number;
+  followersCount: number;
+  followingCount: number;
+  followers: Array<{
+    _id: string;
+    username: string | null;
+    imageUrl: string | null;
+  }> | Array<never>;
+  following: Array<{
+    _id: string;
+    username: string | null;
+    imageUrl: string | null;
+  }> | Array<never>;
 } | null;
 // Variable: userQuestionsQuery
 // Query: *[_type == "question" && author._ref == $userId && !isDeleted] | order(createdAt desc) [0...10] {    _id,    title,    createdAt,    "answerCount": count(*[_type == "answer" && references(^._id) && !isDeleted]),    category->{      name,      color    }  }
@@ -665,16 +706,73 @@ export type UserQuestionsQueryResult = Array<{
 // Variable: userAnswersQuery
 // Query: *[_type == "answer" && author._ref == $userId && !isDeleted] | order(createdAt desc) [0...10] {    _id,    content,    question->{      _id,      title    },    createdAt,    "voteCount": coalesce(count(votes[].voteType == "upvote") - count(votes[].voteType == "downvote"), 0)  }
 export type UserAnswersQueryResult = Array<never>;
+// Variable: userPostsQuery
+// Query: *[_type == "post" && author._ref == $userId && !isDeleted] | order(publishedAt desc) [0...10] {    _id,    postTitle,    body,    image,    publishedAt,    subreddit->{      title,      slug    },    "commentCount": count(*[_type == "comment" && references(^._id) && !isDeleted])  }
+export type UserPostsQueryResult = Array<{
+  _id: string;
+  postTitle: string | null;
+  body: Array<{
+    children?: Array<{
+      marks?: Array<string>;
+      text?: string;
+      _type: "span";
+      _key: string;
+    }>;
+    style?: "blockquote" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "normal";
+    listItem?: "bullet" | "number";
+    markDefs?: Array<{
+      href?: string;
+      _type: "link";
+      _key: string;
+    }>;
+    level?: number;
+    _type: "block";
+    _key: string;
+  }> | null;
+  image: {
+    asset?: {
+      _ref: string;
+      _type: "reference";
+      _weak?: boolean;
+      [internalGroqTypeReferenceTo]?: "sanity.imageAsset";
+    };
+    media?: unknown;
+    hotspot?: SanityImageHotspot;
+    crop?: SanityImageCrop;
+    alt?: string;
+    _type: "image";
+  } | null;
+  publishedAt: string | null;
+  subreddit: {
+    title: string | null;
+    slug: Slug | null;
+  } | null;
+  commentCount: number;
+}>;
 // Variable: caseInsensitiveQuery
-// Query: *[_type == "user" && lower(username) == lower($username)][0] {          _id,          username,          imageUrl,          bio,          joinedAt,          "questionsCount": count(*[_type == "question" && author._ref == ^._id && !isDeleted]),          "answersCount": count(*[_type == "answer" && author._ref == ^._id && !isDeleted])        }
+// Query: *[_type == "user" && lower(username) == lower($username)][0] {          _id,          clerkId,          username,          imageUrl,          bio,          joinedAt,          "questionsCount": count(*[_type == "question" && author._ref == ^._id && !isDeleted]),          "answersCount": count(*[_type == "answer" && author._ref == ^._id && !isDeleted]),          "postsCount": count(*[_type == "post" && author._ref == ^._id && !isDeleted]),          "followersCount": count(coalesce(followers, [])),          "followingCount": count(coalesce(following, [])),          "followers": coalesce(followers, [])[]->{ _id, username, imageUrl },          "following": coalesce(following, [])[]->{ _id, username, imageUrl }        }
 export type CaseInsensitiveQueryResult = {
   _id: string;
+  clerkId: string | null;
   username: string | null;
   imageUrl: string | null;
-  bio: null;
+  bio: string | null;
   joinedAt: string | null;
   questionsCount: number;
   answersCount: number;
+  postsCount: number;
+  followersCount: number;
+  followingCount: number;
+  followers: Array<{
+    _id: string;
+    username: string | null;
+    imageUrl: string | null;
+  }> | Array<never>;
+  following: Array<{
+    _id: string;
+    username: string | null;
+    imageUrl: string | null;
+  }> | Array<never>;
 } | null;
 
 // Source: ./src/app/(app)/question/[id]/page.tsx
@@ -688,8 +786,8 @@ export type QuestionQueryResult = {
     _id: string;
     username: string | null;
     imageUrl: string | null;
-    bio: null;
-    clerkId: null;
+    bio: string | null;
+    clerkId: string | null;
   } | null;
   category: {
     name: string | null;
@@ -720,24 +818,54 @@ export type GetCategoriesQueryResult = Array<{
   questionCount: number;
 }>;
 
-// Source: ./src/app/api/communities/route.ts
-// Variable: allCommunitiesQuery
-// Query: *[_type == "subreddit"] | order(createdAt desc) {    _id,    title,    slug  }
-export type AllCommunitiesQueryResult = Array<{
-  _id: string;
-  title: string | null;
-  slug: Slug | null;
-}>;
-
 // Source: ./src/app/api/get-current-user/route.ts
 // Variable: currentUserQuery
-// Query: *[_type == "user" && _id == $userId][0] {        _id,        username,        email,        imageUrl      }
+// Query: *[_type == "user" && clerkId == $userId][0] {        _id,        username,        email,        imageUrl,        clerkId      }
 export type CurrentUserQueryResult = {
   _id: string;
   username: string | null;
   email: string | null;
   imageUrl: string | null;
+  clerkId: string | null;
 } | null;
+
+// Source: ./src/app/api/notifications/mark-all-read/route.ts
+// Variable: userQueryNotifyRead
+// Query: *[_type == "user" && (clerkId == $userId || _id == $userId)][0]._id
+export type UserQueryNotifyReadResult = string | null;
+// Variable: query
+// Query: *[_type == "notification" && recipient._ref == $sanityUserId && !read]._id
+export type QueryResult = Array<string>;
+
+// Source: ./src/app/api/notifications/route.ts
+// Variable: userQueryNotifyList
+// Query: *[_type == "user" && (clerkId == $userId || _id == $userId)][0]._id
+export type UserQueryNotifyListResult = string | null;
+// Variable: notificationsListQuery
+// Query: *[_type == "notification" && recipient._ref == $sanityUserId] | order(createdAt desc) {            _id,            type,            read,            createdAt,            sender->{                username,                imageUrl            },            question->{                _id,                title,                slug            }        }
+export type NotificationsListQueryResult = Array<{
+  _id: string;
+  type: "answer" | "follow" | "vote" | null;
+  read: boolean | null;
+  createdAt: string | null;
+  sender: {
+    username: string | null;
+    imageUrl: string | null;
+  } | null;
+  question: {
+    _id: string;
+    title: string | null;
+    slug: null;
+  } | null;
+}>;
+
+// Source: ./src/app/api/notifications/unread-count/route.ts
+// Variable: userQueryNotifyCount
+// Query: *[_type == "user" && (clerkId == $userId || _id == $userId)][0]._id
+export type UserQueryNotifyCountResult = string | null;
+// Variable: unreadNotificationsCountQuery
+// Query: count(*[_type == "notification" && recipient._ref == $sanityUserId && !read])
+export type UnreadNotificationsCountQueryResult = number;
 
 // Source: ./src/app/api/search/route.ts
 // Variable: searchQuestionsQuery
@@ -758,6 +886,53 @@ export type SearchQuestionsQueryResult = Array<{
   createdAt: string | null;
   answerCount: number;
 }>;
+// Variable: searchPostsQuery
+// Query: *[_type == "post" && !isDeleted && (        postTitle match $searchTerm ||        body[].children[].text match $searchTerm      )] | order(publishedAt desc) [0...10] {        _id,        postTitle,        body,        image,        author->{          username,          imageUrl        },        subreddit->{          title,          slug        },        publishedAt,        "commentCount": count(*[_type == "comment" && references(^._id) && !isDeleted])      }
+export type SearchPostsQueryResult = Array<{
+  _id: string;
+  postTitle: string | null;
+  body: Array<{
+    children?: Array<{
+      marks?: Array<string>;
+      text?: string;
+      _type: "span";
+      _key: string;
+    }>;
+    style?: "blockquote" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "normal";
+    listItem?: "bullet" | "number";
+    markDefs?: Array<{
+      href?: string;
+      _type: "link";
+      _key: string;
+    }>;
+    level?: number;
+    _type: "block";
+    _key: string;
+  }> | null;
+  image: {
+    asset?: {
+      _ref: string;
+      _type: "reference";
+      _weak?: boolean;
+      [internalGroqTypeReferenceTo]?: "sanity.imageAsset";
+    };
+    media?: unknown;
+    hotspot?: SanityImageHotspot;
+    crop?: SanityImageCrop;
+    alt?: string;
+    _type: "image";
+  } | null;
+  author: {
+    username: string | null;
+    imageUrl: string | null;
+  } | null;
+  subreddit: {
+    title: string | null;
+    slug: Slug | null;
+  } | null;
+  publishedAt: string | null;
+  commentCount: number;
+}>;
 // Variable: usersQuery
 // Query: *[_type == "user" && (        username match $searchTerm ||        email match $searchTerm      )] | order(joinedAt desc) [0...10] {        _id,        username,        email,        imageUrl,        bio,        joinedAt      }
 export type UsersQueryResult = Array<{
@@ -765,7 +940,7 @@ export type UsersQueryResult = Array<{
   username: string | null;
   email: string | null;
   imageUrl: string | null;
-  bio: null;
+  bio: string | null;
   joinedAt: string | null;
 }>;
 // Variable: answersQuery
@@ -790,6 +965,152 @@ export type SyncUserQueryResult = {
   imageUrl: string | null;
   joinedAt: string | null;
 } | null;
+
+// Source: ./src/app/api/votes/route.ts
+// Variable: postVoteQuery
+// Query: *[_type == "vote" && user._ref == $userId && post._ref == $targetId][0] {        _id,        voteType      }
+export type PostVoteQueryResult = {
+  _id: string;
+  voteType: "downvote" | "upvote" | null;
+} | null;
+// Variable: commentVoteQuery
+// Query: *[_type == "vote" && user._ref == $userId && comment._ref == $targetId][0] {        _id,        voteType      }
+export type CommentVoteQueryResult = {
+  _id: string;
+  voteType: "downvote" | "upvote" | null;
+} | null;
+// Variable: postVoteStatsQuery
+// Query: {        "votes": *[_type == "vote" && post._ref == $targetId] {          voteType        },        "userVote": *[_type == "vote" && user._ref == $userId && post._ref == $targetId][0] {          voteType        }      }
+export type PostVoteStatsQueryResult = {
+  votes: Array<{
+    voteType: "downvote" | "upvote" | null;
+  }>;
+  userVote: {
+    voteType: "downvote" | "upvote" | null;
+  } | null;
+};
+// Variable: commentVoteStatsQuery
+// Query: {        "votes": *[_type == "vote" && comment._ref == $targetId] {          voteType        },        "userVote": *[_type == "vote" && user._ref == $userId && comment._ref == $targetId][0] {          voteType        }      }
+export type CommentVoteStatsQueryResult = {
+  votes: Array<{
+    voteType: "downvote" | "upvote" | null;
+  }>;
+  userVote: {
+    voteType: "downvote" | "upvote" | null;
+  } | null;
+};
+
+// Source: ./src/app/page.tsx
+// Variable: homeQuestionsQuery
+// Query: *[_type == "question" && !isDeleted] | order(createdAt desc) [0...20] {    _id,    title,    description,    author->{      username,      imageUrl,      clerkId    },    category->{      _id,      name,      color,      icon    },    image{      asset->{        url      },      alt    },    tags,    isAnswered,    isDeleted,    createdAt,    "answerCount": count(*[_type == "answer" && references(^._id) && !isDeleted]),    "voteCount": 0,    "topAnswer": *[_type == "answer" && references(^._id) && !isDeleted] | order(createdAt asc) [0] {      _id,      content,      author->{        username,        imageUrl,        clerkId      },      createdAt    }  }
+export type HomeQuestionsQueryResult = Array<{
+  _id: string;
+  title: string | null;
+  description: string | null;
+  author: {
+    username: string | null;
+    imageUrl: string | null;
+    clerkId: string | null;
+  } | null;
+  category: {
+    _id: string;
+    name: string | null;
+    color: "blue" | "gray" | "green" | "orange" | "pink" | "purple" | "red" | null;
+    icon: string | null;
+  } | null;
+  image: null;
+  tags: Array<string> | null;
+  isAnswered: boolean | null;
+  isDeleted: boolean | null;
+  createdAt: string | null;
+  answerCount: number;
+  voteCount: 0;
+  topAnswer: null;
+}>;
+// Variable: homePostsQuery
+// Query: *[_type == "post" && !isDeleted] | order(publishedAt desc) [0...10] {    _id,    postTitle,    body,    image{      "_type": "image",      asset->{        url,        metadata      },      alt    },    contentGallery[]{      _type,      asset->{        url      },      alt,      title    },    author->{      username,      imageUrl,      clerkId    },    subreddit->{      title,      slug    },    category->{      name,      slug    },    publishedAt,    tags,    "commentCount": count(*[_type == "comment" && references(^._id) && !isDeleted])  }
+export type HomePostsQueryResult = Array<{
+  _id: string;
+  postTitle: string | null;
+  body: Array<{
+    children?: Array<{
+      marks?: Array<string>;
+      text?: string;
+      _type: "span";
+      _key: string;
+    }>;
+    style?: "blockquote" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "normal";
+    listItem?: "bullet" | "number";
+    markDefs?: Array<{
+      href?: string;
+      _type: "link";
+      _key: string;
+    }>;
+    level?: number;
+    _type: "block";
+    _key: string;
+  }> | null;
+  image: {
+    _type: "image";
+    asset: {
+      url: string | null;
+      metadata: SanityImageMetadata | null;
+    } | null;
+    alt: string | null;
+  } | null;
+  contentGallery: Array<{
+    _type: "file";
+    asset: {
+      url: string | null;
+    } | null;
+    alt: null;
+    title: null;
+  } | {
+    _type: "image";
+    asset: {
+      url: string | null;
+    } | null;
+    alt: null;
+    title: null;
+  }> | null;
+  author: {
+    username: string | null;
+    imageUrl: string | null;
+    clerkId: string | null;
+  } | null;
+  subreddit: {
+    title: string | null;
+    slug: Slug | null;
+  } | null;
+  category: {
+    name: string | null;
+    slug: Slug | null;
+  } | null;
+  publishedAt: string | null;
+  tags: Array<string> | null;
+  commentCount: number;
+}>;
+// Variable: categoriesQueryHome
+// Query: *[_type == "category"] | order(name asc) {    _id,    name,    "slug": slug.current,    color  }
+export type CategoriesQueryHomeResult = Array<{
+  _id: string;
+  name: string | null;
+  slug: string | null;
+  color: "blue" | "gray" | "green" | "orange" | "pink" | "purple" | "red" | null;
+}>;
+// Variable: homeCommunitiesQuery
+// Query: *[_type == "subreddit"] | order(createdAt desc) [0...5] {    _id,    title,    slug,    description,    image{      asset->{        url      }    }  }
+export type HomeCommunitiesQueryResult = Array<{
+  _id: string;
+  title: string | null;
+  slug: Slug | null;
+  description: string | null;
+  image: {
+    asset: {
+      url: string | null;
+    } | null;
+  } | null;
+}>;
 
 // Source: ./src/sanity/lib/subreddit/createSubreddit.ts
 // Variable: checkExistingQuery
@@ -837,15 +1158,38 @@ export type GetSubredditsQueryResult = Array<{
     username?: string;
     email?: string;
     imageUrl?: string;
+    clerkId?: string;
+    bio?: string;
     joinedAt?: string;
     isReported?: boolean;
+    bookmarks?: Array<{
+      _ref: string;
+      _type: "reference";
+      _weak?: boolean;
+      _key: string;
+      [internalGroqTypeReferenceTo]?: "question";
+    }>;
+    followers?: Array<{
+      _ref: string;
+      _type: "reference";
+      _weak?: boolean;
+      _key: string;
+      [internalGroqTypeReferenceTo]?: "user";
+    }>;
+    following?: Array<{
+      _ref: string;
+      _type: "reference";
+      _weak?: boolean;
+      _key: string;
+      [internalGroqTypeReferenceTo]?: "user";
+    }>;
   } | null;
   createdAt?: string;
 }>;
 
 // Source: ./src/sanity/lib/user/getUser.ts
 // Variable: getExistingUserQuery
-// Query: *[_type == "user" && _id == $id][0]
+// Query: *[_type == "user" && (_id == $id || clerkId == $id)][0]
 export type GetExistingUserQueryResult = {
   _id: string;
   _type: "user";
@@ -855,8 +1199,31 @@ export type GetExistingUserQueryResult = {
   username?: string;
   email?: string;
   imageUrl?: string;
+  clerkId?: string;
+  bio?: string;
   joinedAt?: string;
   isReported?: boolean;
+  bookmarks?: Array<{
+    _ref: string;
+    _type: "reference";
+    _weak?: boolean;
+    _key: string;
+    [internalGroqTypeReferenceTo]?: "question";
+  }>;
+  followers?: Array<{
+    _ref: string;
+    _type: "reference";
+    _weak?: boolean;
+    _key: string;
+    [internalGroqTypeReferenceTo]?: "user";
+  }>;
+  following?: Array<{
+    _ref: string;
+    _type: "reference";
+    _weak?: boolean;
+    _key: string;
+    [internalGroqTypeReferenceTo]?: "user";
+  }>;
 } | null;
 
 // Query TypeMap
@@ -867,26 +1234,38 @@ declare module "@sanity/client" {
     "\n  *[_type == \"subreddit\" && slug.current == $slug][0]{\n    _id,\n    title,\n    slug,\n  }\n": SubredditQueryResult;
     "\n      *[_type == \"subreddit\" && slug.current == $slug][0] {\n        _id,\n        title,\n        description,\n        image,\n        moderator->{\n          username\n        },\n        createdAt\n      }\n    ": CommunityQueryResult;
     "\n      *[_type == \"post\" && !isDeleted && subreddit->slug.current == $slug] | order(publishedAt desc) [0...20] {\n        _id,\n        postTitle,\n        body,\n        image,\n        publishedAt,\n        author->{\n          username,\n          imageUrl\n        },\n        subreddit->{\n          title,\n          slug\n        }\n      }\n    ": PostsQueryResult;
-    "\n  *[_type == \"subreddit\"] | order(createdAt desc) {\n    _id,\n    title,\n    description,\n    image,\n    \"moderator\": moderator->{username},\n    createdAt,\n    slug,\n  }\n": SubredditsQueryResult;
-    "\n  *[_type == \"question\" && !isDeleted] | order(createdAt desc) [0...10] {\n    _id,\n    title,\n    description,\n    author->{\n      username,\n      imageUrl,\n      clerkId\n    },\n    category->{\n      name,\n      color,\n      icon\n    },\n    tags,\n    isAnswered,\n    isDeleted,\n    createdAt,\n    \"answerCount\": count(*[_type == \"answer\" && references(^._id) && !isDeleted]),\n    \"topAnswer\": *[_type == \"answer\" && references(^._id) && !isDeleted] | order(createdAt asc) [0] {\n      _id,\n      content,\n      author->{\n        username,\n        imageUrl,\n        clerkId\n      },\n      createdAt\n    }\n  }\n": QuestionsQueryResult;
-    "\n  *[_type == \"post\" && !isDeleted] | order(publishedAt desc) [0...10] {\n    _id,\n    postTitle,\n    body,\n    image{\n      asset->{\n        url,\n        metadata\n      },\n      alt\n    },\n    author->{\n      username,\n      imageUrl,\n      clerkId\n    },\n    subreddit->{\n      title,\n      slug\n    },\n    publishedAt,\n    \"commentCount\": count(*[_type == \"comment\" && references(^._id) && !isDeleted])\n  }\n": HomePostsQueryResult;
-    "\n      *[_type == \"post\" && _id == $id && !isDeleted][0] {\n        _id,\n        postTitle,\n        body,\n        image,\n        publishedAt,\n        author->{\n          username,\n          imageUrl,\n          clerkId\n        },\n        subreddit->{\n          title,\n          slug\n        }\n      }\n    ": PostQueryResult;
-    "\n      *[_type == \"comment\" && references($id) && !isDeleted && !defined(parentComment)] | order(createdAt asc) {\n        _id,\n        comment,\n        createdAt,\n        author->{\n          username,\n          imageUrl,\n          clerkId\n        }\n      }\n    ": CommentsQueryResult;
-    "\n  *[_type == \"user\" && username == $username][0] {\n    _id,\n    username,\n    imageUrl,\n    bio,\n    joinedAt,\n    \"questionsCount\": count(*[_type == \"question\" && author._ref == ^._id && !isDeleted]),\n    \"answersCount\": count(*[_type == \"answer\" && author._ref == ^._id && !isDeleted])\n  }\n": UserQueryResult;
+    "\n  *[_type == \"category\"] | order(name asc) {\n    _id,\n    name,\n    slug,\n    description,\n    icon,\n    color,\n    \"questionCount\": count(*[_type == \"question\" && references(^._id)])\n  }\n": CategoriesQueryResult;
+    "\n      *[_type == \"post\" && _id == $id && !isDeleted][0] {\n        _id,\n        postTitle,\n        body,\n        image,\n        contentGallery[]{\n          _type,\n          asset->{\n            url\n          },\n          alt,\n          title\n        },\n        publishedAt,\n        author->{\n          username,\n          imageUrl,\n          clerkId\n        },\n        subreddit->{\n          title,\n          slug\n        },\n        category->{\n          name,\n          slug,\n          icon\n        }\n      }\n    ": PostQueryResult;
+    "\n      *[_type == \"comment\" && post._ref == $id && !isDeleted] | order(createdAt asc) {\n        _id,\n        comment,\n        createdAt,\n        author->{\n          username,\n          imageUrl,\n          clerkId\n        },\n        parentComment\n      }\n    ": CommentsQueryResult;
+    "\n  *[_type == \"user\" && username == $username][0] {\n    _id,\n    clerkId,\n    username,\n    imageUrl,\n    bio,\n    joinedAt,\n    \"questionsCount\": count(*[_type == \"question\" && author._ref == ^._id && !isDeleted]),\n    \"answersCount\": count(*[_type == \"answer\" && author._ref == ^._id && !isDeleted]),\n    \"postsCount\": count(*[_type == \"post\" && author._ref == ^._id && !isDeleted]),\n    \"followersCount\": count(coalesce(followers, [])),\n    \"followingCount\": count(coalesce(following, [])),\n    \"followers\": coalesce(followers, [])[]->{ _id, username, imageUrl },\n    \"following\": coalesce(following, [])[]->{ _id, username, imageUrl }\n  }\n": UserQueryResult;
     "\n  *[_type == \"question\" && author._ref == $userId && !isDeleted] | order(createdAt desc) [0...10] {\n    _id,\n    title,\n    createdAt,\n    \"answerCount\": count(*[_type == \"answer\" && references(^._id) && !isDeleted]),\n    category->{\n      name,\n      color\n    }\n  }\n": UserQuestionsQueryResult;
     "\n  *[_type == \"answer\" && author._ref == $userId && !isDeleted] | order(createdAt desc) [0...10] {\n    _id,\n    content,\n    question->{\n      _id,\n      title\n    },\n    createdAt,\n    \"voteCount\": coalesce(count(votes[].voteType == \"upvote\") - count(votes[].voteType == \"downvote\"), 0)\n  }\n": UserAnswersQueryResult;
-    "\n        *[_type == \"user\" && lower(username) == lower($username)][0] {\n          _id,\n          username,\n          imageUrl,\n          bio,\n          joinedAt,\n          \"questionsCount\": count(*[_type == \"question\" && author._ref == ^._id && !isDeleted]),\n          \"answersCount\": count(*[_type == \"answer\" && author._ref == ^._id && !isDeleted])\n        }\n      ": CaseInsensitiveQueryResult;
+    "\n  *[_type == \"post\" && author._ref == $userId && !isDeleted] | order(publishedAt desc) [0...10] {\n    _id,\n    postTitle,\n    body,\n    image,\n    publishedAt,\n    subreddit->{\n      title,\n      slug\n    },\n    \"commentCount\": count(*[_type == \"comment\" && references(^._id) && !isDeleted])\n  }\n": UserPostsQueryResult;
+    "\n        *[_type == \"user\" && lower(username) == lower($username)][0] {\n          _id,\n          clerkId,\n          username,\n          imageUrl,\n          bio,\n          joinedAt,\n          \"questionsCount\": count(*[_type == \"question\" && author._ref == ^._id && !isDeleted]),\n          \"answersCount\": count(*[_type == \"answer\" && author._ref == ^._id && !isDeleted]),\n          \"postsCount\": count(*[_type == \"post\" && author._ref == ^._id && !isDeleted]),\n          \"followersCount\": count(coalesce(followers, [])),\n          \"followingCount\": count(coalesce(following, [])),\n          \"followers\": coalesce(followers, [])[]->{ _id, username, imageUrl },\n          \"following\": coalesce(following, [])[]->{ _id, username, imageUrl }\n        }\n      ": CaseInsensitiveQueryResult;
     "\n  *[_type == \"question\" && _id == $id && !isDeleted][0] {\n    _id,\n    title,\n    description,\n    author->{\n      _id,\n      username,\n      imageUrl,\n      bio,\n      clerkId\n    },\n    category->{\n      name,\n      color,\n      slug\n    },\n    tags,\n    createdAt,\n    updatedAt,\n    \"answerCount\": count(*[_type == \"answer\" && references(^._id) && !isDeleted]),\n    \"viewCount\": 0,\n    \"followerCount\": 0,\n    \"isFollowing\": false,\n    \"isBookmarked\": false,\n    \"answers\": *[_type == \"answer\" && references(^._id) && !isDeleted] | order(createdAt desc) {\n      _id,\n      content,\n      author->{\n        _id,\n        username,\n        imageUrl,\n        bio,\n        clerkId\n      },\n      createdAt,\n      updatedAt,\n      \"voteCount\": coalesce(count(votes[].voteType == \"upvote\") - count(votes[].voteType == \"downvote\"), 0),\n      \"userVote\": null,\n      \"isAccepted\": false,\n      \"commentCount\": 0,\n      \"comments\": []\n    }\n  }\n": QuestionQueryResult;
     "\n  *[_type == \"category\"] | order(createdAt desc) {\n    _id,\n    name,\n    \"slug\": slug.current,\n    description,\n    icon,\n    color,\n    \"questionCount\": count(*[_type == \"question\" && references(^._id) && !isDeleted])\n  }\n": GetCategoriesQueryResult;
-    "\n  *[_type == \"subreddit\"] | order(createdAt desc) {\n    _id,\n    title,\n    slug\n  }\n": AllCommunitiesQueryResult;
-    "\n      *[_type == \"user\" && _id == $userId][0] {\n        _id,\n        username,\n        email,\n        imageUrl\n      }\n    ": CurrentUserQueryResult | ExistingUserQueryResult;
+    "\n      *[_type == \"user\" && clerkId == $userId][0] {\n        _id,\n        username,\n        email,\n        imageUrl,\n        clerkId\n      }\n    ": CurrentUserQueryResult;
+    "*[_type == \"user\" && (clerkId == $userId || _id == $userId)][0]._id": UserQueryNotifyReadResult | UserQueryNotifyListResult | UserQueryNotifyCountResult;
+    "*[_type == \"notification\" && recipient._ref == $sanityUserId && !read]._id": QueryResult;
+    "*[_type == \"notification\" && recipient._ref == $sanityUserId] | order(createdAt desc) {\n            _id,\n            type,\n            read,\n            createdAt,\n            sender->{\n                username,\n                imageUrl\n            },\n            question->{\n                _id,\n                title,\n                slug\n            }\n        }": NotificationsListQueryResult;
+    "count(*[_type == \"notification\" && recipient._ref == $sanityUserId && !read])": UnreadNotificationsCountQueryResult;
     "\n      *[_type == \"question\" && !isDeleted && (\n        title match $searchTerm ||\n        description match $searchTerm ||\n        tags[] match $searchTerm\n      )] | order(createdAt desc) [0...10] {\n        _id,\n        title,\n        description,\n        author->{\n          username,\n          imageUrl\n        },\n        category->{\n          name,\n          color\n        },\n        tags,\n        createdAt,\n        \"answerCount\": count(*[_type == \"answer\" && references(^._id) && !isDeleted])\n      }\n    ": SearchQuestionsQueryResult;
+    "\n      *[_type == \"post\" && !isDeleted && (\n        postTitle match $searchTerm ||\n        body[].children[].text match $searchTerm\n      )] | order(publishedAt desc) [0...10] {\n        _id,\n        postTitle,\n        body,\n        image,\n        author->{\n          username,\n          imageUrl\n        },\n        subreddit->{\n          title,\n          slug\n        },\n        publishedAt,\n        \"commentCount\": count(*[_type == \"comment\" && references(^._id) && !isDeleted])\n      }\n    ": SearchPostsQueryResult;
     "\n      *[_type == \"user\" && (\n        username match $searchTerm ||\n        email match $searchTerm\n      )] | order(joinedAt desc) [0...10] {\n        _id,\n        username,\n        email,\n        imageUrl,\n        bio,\n        joinedAt\n      }\n    ": UsersQueryResult;
     "\n      *[_type == \"answer\" && !isDeleted && (\n        content[].children[].text match $searchTerm\n      )] | order(createdAt desc) [0...10] {\n        _id,\n        content,\n        author->{\n          username,\n          imageUrl\n        },\n        question->{\n          _id,\n          title\n        },\n        createdAt,\n        \"voteCount\": coalesce(\n          count(*[_type == \"vote\" && references(^._id) && voteType == \"upvote\"]) -\n          count(*[_type == \"vote\" && references(^._id) && voteType == \"downvote\"]),\n          0\n        )\n      }\n    ": AnswersQueryResult;
+    "\n      *[_type == \"user\" && _id == $userId][0] {\n        _id,\n        username,\n        email,\n        imageUrl\n      }\n    ": ExistingUserQueryResult;
     "\n      *[_type == \"user\" && _id == $userId][0] {\n        _id,\n        username,\n        email,\n        imageUrl,\n        joinedAt\n      }\n    ": SyncUserQueryResult;
+    "\n      *[_type == \"vote\" && user._ref == $userId && post._ref == $targetId][0] {\n        _id,\n        voteType\n      }\n    ": PostVoteQueryResult;
+    "\n      *[_type == \"vote\" && user._ref == $userId && comment._ref == $targetId][0] {\n        _id,\n        voteType\n      }\n    ": CommentVoteQueryResult;
+    "\n      {\n        \"votes\": *[_type == \"vote\" && post._ref == $targetId] {\n          voteType\n        },\n        \"userVote\": *[_type == \"vote\" && user._ref == $userId && post._ref == $targetId][0] {\n          voteType\n        }\n      }\n    ": PostVoteStatsQueryResult;
+    "\n      {\n        \"votes\": *[_type == \"vote\" && comment._ref == $targetId] {\n          voteType\n        },\n        \"userVote\": *[_type == \"vote\" && user._ref == $userId && comment._ref == $targetId][0] {\n          voteType\n        }\n      }\n    ": CommentVoteStatsQueryResult;
+    "\n  *[_type == \"question\" && !isDeleted] | order(createdAt desc) [0...20] {\n    _id,\n    title,\n    description,\n    author->{\n      username,\n      imageUrl,\n      clerkId\n    },\n    category->{\n      _id,\n      name,\n      color,\n      icon\n    },\n    image{\n      asset->{\n        url\n      },\n      alt\n    },\n    tags,\n    isAnswered,\n    isDeleted,\n    createdAt,\n    \"answerCount\": count(*[_type == \"answer\" && references(^._id) && !isDeleted]),\n    \"voteCount\": 0,\n    \"topAnswer\": *[_type == \"answer\" && references(^._id) && !isDeleted] | order(createdAt asc) [0] {\n      _id,\n      content,\n      author->{\n        username,\n        imageUrl,\n        clerkId\n      },\n      createdAt\n    }\n  }\n": HomeQuestionsQueryResult;
+    "\n  *[_type == \"post\" && !isDeleted] | order(publishedAt desc) [0...10] {\n    _id,\n    postTitle,\n    body,\n    image{\n      \"_type\": \"image\",\n      asset->{\n        url,\n        metadata\n      },\n      alt\n    },\n    contentGallery[]{\n      _type,\n      asset->{\n        url\n      },\n      alt,\n      title\n    },\n    author->{\n      username,\n      imageUrl,\n      clerkId\n    },\n    subreddit->{\n      title,\n      slug\n    },\n    category->{\n      name,\n      slug\n    },\n    publishedAt,\n    tags,\n    \"commentCount\": count(*[_type == \"comment\" && references(^._id) && !isDeleted])\n  }\n": HomePostsQueryResult;
+    "\n  *[_type == \"category\"] | order(name asc) {\n    _id,\n    name,\n    \"slug\": slug.current,\n    color\n  }\n": CategoriesQueryHomeResult;
+    "\n  *[_type == \"subreddit\"] | order(createdAt desc) [0...5] {\n    _id,\n    title,\n    slug,\n    description,\n    image{\n      asset->{\n        url\n      }\n    }\n  }\n": HomeCommunitiesQueryResult;
     "\n*[_type==\"subreddit\" && title == $name][0]{\n            _id\n\n}": CheckExistingQueryResult;
     "\n            *[_type == \"subreddit\" && slug.current == $slug][0]{\n            _id\n            }\n            \n            ": CheckSlugQueryResult;
     "\n        *[_type == \"subreddit\"] {\n        ...,\n          \"slug\": slug.current,\n         \n          \"moderator\":moderator->,\n            \n        } |order(createdAt desc)\n    ": GetSubredditsQueryResult;
-    "*[_type == \"user\" && _id == $id][0]": GetExistingUserQueryResult;
+    "*[_type == \"user\" && (_id == $id || clerkId == $id)][0]": GetExistingUserQueryResult;
   }
 }

@@ -5,6 +5,8 @@ import { Users, Plus, Hash, MessageCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { currentUser } from "@clerk/nextjs/server";
+import CommunityCard from "@/components/CommunityCard";
 
 interface Community {
   _id: string;
@@ -16,23 +18,30 @@ interface Community {
   memberCount?: number;
   postCount?: number;
   createdAt: string;
+  moderator?: {
+    clerkId?: string;
+  };
 }
 
 const communitiesQuery = defineQuery(`
-  *[_type == "subreddit" && !isDeleted] | order(createdAt desc) {
+  *[_type == "subreddit"] | order(createdAt desc) {
     _id,
     title,
     description,
     slug,
     "memberCount": count(*[_type == "user" && references(^._id)]),
     "postCount": count(*[_type == "post" && references(^._id) && !isDeleted]),
-    createdAt
+    createdAt,
+    moderator->{
+      clerkId
+    }
   }
 `);
 
 export default async function CommunitiesPage() {
   let communities: Community[] = [];
   let loading = false;
+  const user = await currentUser();
 
   try {
     const result = await sanityFetch({
@@ -45,24 +54,6 @@ export default async function CommunitiesPage() {
     loading = true;
   }
 
-  const getCommunityIcon = (title: string) => {
-    return title.charAt(0).toUpperCase();
-  };
-
-  const getCommunityColor = (index: number) => {
-    const colors = [
-      "bg-blue-500",
-      "bg-green-500", 
-      "bg-red-500",
-      "bg-purple-500",
-      "bg-orange-500",
-      "bg-pink-500",
-      "bg-indigo-500",
-      "bg-teal-500"
-    ];
-    return colors[index % colors.length];
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto p-4">
@@ -70,15 +61,16 @@ export default async function CommunitiesPage() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Communities</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Communities</h1>
               <p className="text-gray-600">
                 Discover and join communities related to medical tourism and healthcare
               </p>
             </div>
-            <Link href="/communities/create">
+            <Link href="/create-community">
               <Button className="bg-blue-600 hover:bg-blue-700 text-white flex items-center space-x-2">
                 <Plus className="w-4 h-4" />
-                <span>Create Community</span>
+                <span className="hidden sm:inline">Create Community</span>
+                <span className="sm:hidden">Create</span>
               </Button>
             </Link>
           </div>
@@ -93,42 +85,12 @@ export default async function CommunitiesPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {communities.length > 0 ? (
               communities.map((community, index) => (
-                <div key={community._id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-                  <div className="flex items-start space-x-4">
-                    <div className={`w-12 h-12 ${getCommunityColor(index)} rounded-full flex items-center justify-center text-white text-lg font-bold flex-shrink-0`}>
-                      {getCommunityIcon(community.title)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <Link href={`/community/${community.slug.current}`}>
-                        <h3 className="text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors mb-1">
-                          r/{community.title}
-                        </h3>
-                      </Link>
-                      {community.description && (
-                        <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-                          {community.description}
-                        </p>
-                      )}
-                      <div className="flex items-center space-x-4 text-sm text-gray-500">
-                        <div className="flex items-center space-x-1">
-                          <Users className="w-4 h-4" />
-                          <span>{community.memberCount || 0} members</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <MessageCircle className="w-4 h-4" />
-                          <span>{community.postCount || 0} posts</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-4 pt-4 border-t border-gray-100">
-                    <Link href={`/community/${community.slug.current}`}>
-                      <Button variant="outline" size="sm" className="w-full">
-                        View Community
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
+                <CommunityCard
+                  key={community._id}
+                  community={community}
+                  index={index}
+                  currentUserId={user?.id}
+                />
               ))
             ) : (
               <div className="col-span-full text-center py-12">
@@ -139,7 +101,7 @@ export default async function CommunitiesPage() {
                 <p className="text-gray-500 mb-4">
                   Be the first to create a community and start building a community around your interests.
                 </p>
-                <Link href="/communities/create">
+                <Link href="/create-community">
                   <Button className="bg-blue-600 hover:bg-blue-700 text-white flex items-center space-x-2">
                     <Plus className="w-4 h-4" />
                     <span>Create First Community</span>
@@ -160,7 +122,7 @@ export default async function CommunitiesPage() {
               { name: "Medical Advice", slug: "medical-advice", members: "1.5k", color: "bg-red-500" },
               { name: "Wellness & Lifestyle", slug: "wellness", members: "1.2k", color: "bg-purple-500" }
             ].map((community, index) => (
-              <Link key={community.slug} href={`/community/${community.slug}`}>
+              <Link key={community.slug} href={`/communities/${community.slug}`}>
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow cursor-pointer">
                   <div className="flex items-center space-x-3 mb-3">
                     <div className={`w-8 h-8 ${community.color} rounded-full flex items-center justify-center text-white text-sm font-bold`}>

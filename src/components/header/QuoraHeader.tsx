@@ -239,7 +239,7 @@ export default function QuoraHeader() {
                   alt="Medical Tourism Forum"
                   width={320}
                   height={100}
-                  className="h-12 sm:h-16 md:h-25 w-auto"
+                  className="h-20 sm:h-20 md:h-28 w-auto"
                   suppressHydrationWarning
                 />
               </Link>

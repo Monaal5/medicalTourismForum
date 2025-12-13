@@ -15,14 +15,14 @@ export async function GET(request: Request) {
         }
 
         // Find the Sanity user ID based on the Clerk ID
-        const userQuery = defineQuery(`*[_type == "user" && (clerkId == $userId || _id == $userId)][0]._id`);
-        const sanityUserId = await adminClient.fetch(userQuery, { userId });
+        const userQueryNotifyList = defineQuery(`*[_type == "user" && (clerkId == $userId || _id == $userId)][0]._id`);
+        const sanityUserId = await adminClient.fetch(userQueryNotifyList, { userId });
 
         if (!sanityUserId) {
             return NextResponse.json({ success: true, notifications: [] });
         }
 
-        const query = defineQuery(`*[_type == "notification" && recipient._ref == $sanityUserId] | order(createdAt desc) {
+        const notificationsListQuery = defineQuery(`*[_type == "notification" && recipient._ref == $sanityUserId] | order(createdAt desc) {
             _id,
             type,
             read,
@@ -38,7 +38,7 @@ export async function GET(request: Request) {
             }
         }`);
 
-        const notifications = await adminClient.fetch(query, { sanityUserId });
+        const notifications = await adminClient.fetch(notificationsListQuery, { sanityUserId });
 
 
 

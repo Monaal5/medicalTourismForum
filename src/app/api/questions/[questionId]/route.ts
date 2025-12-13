@@ -173,7 +173,7 @@ export async function DELETE(
 
     // Get the current user's Sanity username
     const currentSanityUser = await adminClient.fetch(
-      `*[_type == "user" && _id == $userId][0]{ username }`,
+      `*[_type == "user" && clerkId == $userId][0]{ username }`,
       { userId: clerkUser.id }
     );
 

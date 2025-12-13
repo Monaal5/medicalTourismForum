@@ -1,7 +1,7 @@
 "use client";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Home, Bell, MessageCircle, User, Grid3x3 } from "lucide-react";
+import { Home, Bell, MessageCircle, User, Grid3x3, Users } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
 import { useState, useEffect } from "react";
 
@@ -45,9 +45,9 @@ export default function BottomNavigation() {
             icon: Bell,
         },
         {
-            name: "Messages",
-            href: "/messages",
-            icon: MessageCircle,
+            name: "Communities",
+            href: "/communities",
+            icon: Users,
         },
         {
             name: "Profile",

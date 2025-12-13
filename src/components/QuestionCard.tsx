@@ -350,7 +350,12 @@ export default function QuestionCard({ question }: QuestionCardProps) {
       {question.description && (
         <div
           className="text-gray-600 text-sm sm:text-base mb-3 line-clamp-2 sm:line-clamp-3 prose prose-sm max-w-none [&>p]:mb-0"
-          dangerouslySetInnerHTML={{ __html: question.description }}
+          dangerouslySetInnerHTML={{
+            __html: question.description.replace(
+              /#(\w+)/g,
+              '<a href="/search?q=$1" class="text-blue-600 hover:underline" onClick="event.stopPropagation()">#$1</a>'
+            )
+          }}
         />
       )}
 
@@ -358,12 +363,14 @@ export default function QuestionCard({ question }: QuestionCardProps) {
       {question.tags && question.tags.length > 0 && (
         <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-3">
           {question.tags.map((tag, index) => (
-            <span
+            <Link
               key={index}
-              className="px-2 py-1 bg-gray-100 text-gray-600 text-xs sm:text-sm rounded-full"
+              href={`/search?q=${tag}`}
+              className="px-2 py-1 bg-blue-50 text-blue-600 text-xs sm:text-sm rounded-full hover:bg-blue-100 transition-colors"
+              onClick={(e) => e.stopPropagation()}
             >
               #{tag}
-            </span>
+            </Link>
           ))}
         </div>
       )}

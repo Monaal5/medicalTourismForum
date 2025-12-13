@@ -59,8 +59,10 @@ interface Post {
   postTitle: string;
   body?: any[];
   image?: {
+    _type: 'image';
     asset: {
       url: string;
+      _ref?: string;
     };
     alt?: string;
   };
@@ -69,13 +71,20 @@ interface Post {
     imageUrl: string;
     clerkId?: string;
   };
-  subreddit: {
+  subreddit?: {
     title: string;
     slug: {
       current: string;
     };
   };
+  category?: {
+    name: string;
+    slug: {
+      current: string;
+    };
+  };
   publishedAt: string;
+  tags?: string[];
   commentCount?: number;
 }
 
@@ -133,11 +142,20 @@ const homePostsQuery = defineQuery(`
     postTitle,
     body,
     image{
+      "_type": "image",
       asset->{
         url,
         metadata
       },
       alt
+    },
+    contentGallery[]{
+      _type,
+      asset->{
+        url
+      },
+      alt,
+      title
     },
     author->{
       username,
@@ -148,12 +166,17 @@ const homePostsQuery = defineQuery(`
       title,
       slug
     },
+    category->{
+      name,
+      slug
+    },
     publishedAt,
+    tags,
     "commentCount": count(*[_type == "comment" && references(^._id) && !isDeleted])
   }
 `);
 
-const categoriesQuery = defineQuery(`
+const categoriesQueryHome = defineQuery(`
   *[_type == "category"] | order(name asc) {
     _id,
     name,
@@ -162,10 +185,41 @@ const categoriesQuery = defineQuery(`
   }
 `);
 
+
+interface Subreddit {
+  _id: string;
+  title: string;
+  slug: {
+    current: string;
+  };
+  description?: string;
+  image?: {
+    asset: {
+      url: string;
+    };
+  };
+  memberCount?: number;
+}
+
+const homeCommunitiesQuery = defineQuery(`
+  *[_type == "subreddit"] | order(createdAt desc) [0...5] {
+    _id,
+    title,
+    slug,
+    description,
+    image{
+      asset->{
+        url
+      }
+    }
+  }
+`);
+
 export default async function HomePage() {
   let questions: Question[] = [];
   let posts: Post[] = [];
   let categories: Category[] = [];
+  let communities: Subreddit[] = [];
   let loading = false;
 
   try {
@@ -188,12 +242,21 @@ export default async function HomePage() {
     }
 
     const categoriesResult = await sanityFetch({
-      query: categoriesQuery,
+      query: categoriesQueryHome,
       params: {},
     });
 
     if (categoriesResult.data) {
       categories = categoriesResult.data as any;
+    }
+
+    const communitiesResult = await sanityFetch({
+      query: homeCommunitiesQuery,
+      params: {},
+    });
+
+    if (communitiesResult.data) {
+      communities = communitiesResult.data as any;
     }
   } catch (error) {
     console.error("Error fetching content:", error);
@@ -201,6 +264,7 @@ export default async function HomePage() {
   }
 
   if (loading) {
+    // ... (keep loading state as is)
     return (
       <div className="min-h-screen bg-background">
         {/* Mobile Loading */}
@@ -263,18 +327,58 @@ export default async function HomePage() {
             <div className="lg:col-span-3">
               <div className="sticky top-20 space-y-4">
                 <CategoriesSidebar />
+
+                {/* Communities Section in Sidebar */}
+                <div className="bg-card rounded-lg shadow-sm border border-border p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-card-foreground">Communities</h3>
+                    <a href="/create-community" className="text-blue-600 hover:text-blue-700 text-sm font-medium">Create</a>
+                  </div>
+                  <div className="space-y-2">
+                    {communities.length > 0 ? (
+                      communities.map((community) => (
+                        <a
+                          key={community._id}
+                          href={`/community/${community.slug.current}`}
+                          className="flex items-center space-x-2 py-1.5 px-2 hover:bg-accent rounded-md transition-colors"
+                        >
+                          {community.image?.asset?.url ? (
+                            <img src={community.image.asset.url} alt={community.title} className="w-5 h-5 rounded-full object-cover" />
+                          ) : (
+                            <div className="w-5 h-5 rounded-full bg-blue-100 flex items-center justify-center text-xs text-blue-600 font-bold">
+                              {community.title.charAt(0)}
+                            </div>
+                          )}
+                          <span className="text-sm font-medium text-foreground truncate">c/{community.title}</span>
+                        </a>
+                      ))
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No communities yet.</p>
+                    )}
+                  </div>
+                  <a href="/communities" className="block mt-3 text-xs text-blue-600 hover:underline">View All</a>
+                </div>
               </div>
             </div>
 
             {/* Main Content */}
             <div className="lg:col-span-6">
-              <div className="mb-4 sm:mb-6">
-                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-card-foreground">
-                  Recent Activity
-                </h1>
-                <p className="text-sm sm:text-base text-muted-foreground mt-1">
-                  Discover questions, answers, and posts from our community
-                </p>
+              <div className="mb-4 sm:mb-6 flex items-center justify-between">
+                <div>
+                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-card-foreground">
+                    Recent Activity
+                  </h1>
+                  <p className="text-sm sm:text-base text-muted-foreground mt-1">
+                    Discover questions, answers, and posts from our community
+                  </p>
+                </div>
+                {/* Create Community Button (Main Content Area - Optional, user asked for homepage option, sidebar is good, but maybe main area too?) */}
+                <a
+                  href="/create-community"
+                  className="hidden sm:inline-flex items-center justify-center px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  Create Community
+                </a>
               </div>
 
               <div className="space-y-6" suppressHydrationWarning>

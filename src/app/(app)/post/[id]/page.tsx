@@ -17,8 +17,14 @@ interface PostWithDetails {
     imageUrl: string;
     clerkId?: string;
   };
-  subreddit: {
+  subreddit?: {
     title: string;
+    slug: {
+      current: string;
+    };
+  };
+  category?: {
+    name: string;
     slug: {
       current: string;
     };
@@ -54,12 +60,21 @@ export default async function PostPage({ params }: PostPageProps) {
 
   try {
     // Fetch post details
+    // Fetch post details
     const postQuery = defineQuery(`
       *[_type == "post" && _id == $id && !isDeleted][0] {
         _id,
         postTitle,
         body,
         image,
+        contentGallery[]{
+          _type,
+          asset->{
+            url
+          },
+          alt,
+          title
+        },
         publishedAt,
         author->{
           username,
@@ -69,6 +84,11 @@ export default async function PostPage({ params }: PostPageProps) {
         subreddit->{
           title,
           slug
+        },
+        category->{
+          name,
+          slug,
+          icon
         }
       }
     `);
@@ -79,7 +99,8 @@ export default async function PostPage({ params }: PostPageProps) {
     });
 
     if (postResult.data) {
-      post = postResult.data as any;
+      const rawPost = postResult.data as any;
+      post = rawPost;
     }
 
     // Fetch comments with nested replies

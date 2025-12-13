@@ -593,13 +593,19 @@ export default function QuestionDetailPage({
       <div className="max-w-3xl mx-auto px-4 py-6">
         {/* Question Header */}
         <div className="bg-card rounded-lg shadow-sm border border-border p-4 sm:p-6 mb-6">
-          {/* Category and Tags */}
+          {/* Category */}
           {question.category && (
             <div className="flex items-center space-x-2 mb-4">
               <Badge className={getCategoryColor(question.category.color)}>
                 {question.category.name}
               </Badge>
-              {question.tags?.map((tag, index) => (
+            </div>
+          )}
+
+          {/* Tags */}
+          {question.tags && question.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-4">
+              {question.tags.map((tag, index) => (
                 <Badge key={index} variant="secondary" className="text-xs">
                   #{tag}
                 </Badge>
@@ -647,8 +653,8 @@ export default function QuestionDetailPage({
             </div>
 
             {/* Three-dot menu for question owner */}
-            {user && question.author && (user.id === question.author.clerkId || isLoaded) && (
-              <div className="relative" ref={questionMenuRef}>
+            {user && question.author && (user.id === question.author.clerkId) && (
+              <div className="relative flex-shrink-0" ref={questionMenuRef}>
                 <button
                   onClick={() => {
                     console.log('User ID:', user.id);

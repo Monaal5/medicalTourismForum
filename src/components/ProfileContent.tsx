@@ -24,10 +24,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useUser } from "@clerk/nextjs";
 import toast from "react-hot-toast";
-import { UserPlus, UserMinus, Loader2, ChevronLeft, CheckCircle } from "lucide-react";
+import { UserPlus, UserMinus, Loader2, ChevronLeft, CheckCircle, X, Save } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 interface UserProfile {
   _id: string;
+  clerkId?: string;
   username: string | null;
   imageUrl: string | null;
   bio: string | null;
@@ -39,6 +43,9 @@ interface UserProfile {
   followingCount?: number;
   followers?: Array<{ _id: string; username: string; imageUrl: string }>;
   following?: Array<{ _id: string; username: string; imageUrl: string }>;
+  employment?: string | null;
+  education?: string | null;
+  location?: string | null;
 }
 
 interface UserQuestion {
@@ -107,12 +114,36 @@ export default function ProfileContent({
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [checkingFollow, setCheckingFollow] = useState(true);
+  const [isEditingBio, setIsEditingBio] = useState(false);
+  const [displayBio, setDisplayBio] = useState(user.bio || "");
+  const [displayCredentials, setDisplayCredentials] = useState({
+    employment: user.employment || "",
+    education: user.education || "",
+    location: user.location || "",
+  });
+  const [credentialForm, setCredentialForm] = useState(displayCredentials);
+  const [isCredentialsOpen, setIsCredentialsOpen] = useState(false);
+  const [isSavingCredentials, setIsSavingCredentials] = useState(false);
+
+  const [bioText, setBioText] = useState(user.bio || "");
+  const [isSavingBio, setIsSavingBio] = useState(false);
 
   // Check if current user is the profile owner
-  const isOwner = currentUser?.id === user.username; // Note: This might need adjustment based on how we map Clerk ID to username, but for now let's assume we check against ID if possible or just hide if username matches
-  // Actually, user._id is Sanity ID. currentUser.id is Clerk ID. We can't compare directly easily without more data.
-  // But we can compare usernames if we have it.
-  const isProfileOwner = currentUser?.username === user.username;
+  const isProfileOwner = React.useMemo(() => {
+    if (!currentUser) return false;
+
+    // Check by Clerk ID (most reliable)
+    if (user.clerkId && currentUser.id === user.clerkId) {
+      return true;
+    }
+
+    // Fallback to username matching (case insensitive)
+    if (user.username && currentUser.username) {
+      return currentUser.username.toLowerCase() === user.username.toLowerCase();
+    }
+
+    return false;
+  }, [currentUser, user.clerkId, user.username]);
 
   React.useEffect(() => {
     if (currentUser && !isProfileOwner) {
@@ -135,6 +166,59 @@ export default function ProfileContent({
       console.error("Error checking follow status:", error);
     } finally {
       setCheckingFollow(false);
+    }
+  };
+
+
+
+  const handleSaveBio = async () => {
+    if (!bioText.trim()) return;
+
+    setIsSavingBio(true);
+    try {
+      const response = await fetch("/api/users/update-bio", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bio: bioText }),
+      });
+
+      if (response.ok) {
+        toast.success("Profile bio updated");
+        setIsEditingBio(false);
+        setDisplayBio(bioText);
+      } else {
+        toast.error("Failed to update bio");
+      }
+    } catch (error) {
+      console.error("Error updating bio:", error);
+      toast.error("An error occurred");
+    } finally {
+      setIsSavingBio(false);
+    }
+  };
+
+
+  const handleSaveCredentials = async () => {
+    setIsSavingCredentials(true);
+    try {
+      const response = await fetch("/api/users/update-credentials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(credentialForm),
+      });
+
+      if (response.ok) {
+        toast.success("Credentials updated");
+        setDisplayCredentials(credentialForm);
+        setIsCredentialsOpen(false);
+      } else {
+        toast.error("Failed to update credentials");
+      }
+    } catch (error) {
+      console.error("Error updating credentials:", error);
+      toast.error("Failed to update credentials");
+    } finally {
+      setIsSavingCredentials(false);
     }
   };
 
@@ -226,6 +310,57 @@ export default function ProfileContent({
 
   return (
     <div className="min-h-screen bg-white" suppressHydrationWarning>
+      <Dialog open={isCredentialsOpen} onOpenChange={setIsCredentialsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Credentials & Highlights</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="employment">Employment</Label>
+              <Input
+                id="employment"
+                placeholder="Position at Company"
+                value={credentialForm.employment}
+                onChange={(e) =>
+                  setCredentialForm({ ...credentialForm, employment: e.target.value })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="education">Education</Label>
+              <Input
+                id="education"
+                placeholder="School or University"
+                value={credentialForm.education}
+                onChange={(e) =>
+                  setCredentialForm({ ...credentialForm, education: e.target.value })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="location">Location</Label>
+              <Input
+                id="location"
+                placeholder="City, Country"
+                value={credentialForm.location}
+                onChange={(e) =>
+                  setCredentialForm({ ...credentialForm, location: e.target.value })
+                }
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCredentialsOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveCredentials} disabled={isSavingCredentials}>
+              {isSavingCredentials && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <div className="min-h-screen bg-gray-50 md:bg-white" suppressHydrationWarning>
         {/* Mobile View */}
         <div className="md:hidden pb-20">
@@ -258,7 +393,38 @@ export default function ProfileContent({
             {/* Name & Role */}
             <div className="text-center mb-6">
               <h2 className="text-xl font-bold text-gray-900 mb-1">{user.username}</h2>
-              <p className="text-gray-500 text-sm mb-2">{user.bio || "Community Member"}</p>
+              {isEditingBio ? (
+                <div className="mb-4 space-y-3 text-left">
+                  <Textarea
+                    value={bioText}
+                    onChange={(e) => setBioText(e.target.value)}
+                    placeholder="Tell us about yourself..."
+                    className="min-h-[100px]"
+                  />
+                  <div className="flex space-x-2 justify-center">
+                    <Button
+                      size="sm"
+                      onClick={handleSaveBio}
+                      disabled={isSavingBio}
+                      className="bg-blue-600 text-white"
+                    >
+                      {isSavingBio ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                      Save
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setIsEditingBio(false)}
+                      disabled={isSavingBio}
+                    >
+                      <X className="w-4 h-4 mr-2" />
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-gray-500 text-sm mb-2">{displayBio || "Community Member"}</p>
+              )}
               <div className="flex items-center justify-center space-x-1 text-green-600 bg-green-50 inline-flex px-3 py-1 rounded-full mx-auto">
                 <CheckCircle className="w-3 h-3 fill-current" />
                 <span className="text-xs font-medium">Verified Professional</span>
@@ -268,7 +434,12 @@ export default function ProfileContent({
             {/* Action Buttons */}
             <div className="flex gap-3 mb-6">
               {isProfileOwner ? (
-                <Button className="flex-1 bg-blue-600 text-white rounded-xl py-6 text-base font-medium shadow-blue-200 shadow-lg hover:bg-blue-700">
+                <Button
+                  onClick={() => {
+                    setBioText(displayBio || "");
+                    setIsEditingBio(true);
+                  }}
+                  className="flex-1 bg-blue-600 text-white rounded-xl py-6 text-base font-medium shadow-blue-200 shadow-lg hover:bg-blue-700">
                   Edit Profile
                 </Button>
               ) : (
@@ -494,13 +665,69 @@ export default function ProfileContent({
                       </span>
                     </div>
 
-                    {user.bio ? (
-                      <p className="text-gray-700 mb-4">{user.bio}</p>
+                    {isEditingBio ? (
+                      <div className="mb-4 space-y-3">
+                        <Textarea
+                          value={bioText}
+                          onChange={(e) => setBioText(e.target.value)}
+                          placeholder="Tell us about yourself..."
+                          className="min-h-[100px]"
+                        />
+                        <div className="flex space-x-2">
+                          <Button
+                            size="sm"
+                            onClick={handleSaveBio}
+                            disabled={isSavingBio}
+                            className="bg-blue-600 text-white"
+                          >
+                            {isSavingBio ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                            Save
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setIsEditingBio(false)}
+                            disabled={isSavingBio}
+                          >
+                            <X className="w-4 h-4 mr-2" />
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
                     ) : (
-                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
-                        <p className="text-gray-500 text-sm">
-                          Write a description about yourself
-                        </p>
+                      <div className="mb-4 group relative">
+                        {displayBio ? (
+                          <p className="text-gray-700">{displayBio}</p>
+                        ) : (
+                          isProfileOwner ? (
+                            <div
+                              onClick={() => setIsEditingBio(true)}
+                              className="bg-gray-50 border border-gray-200 border-dashed rounded-lg p-4 cursor-pointer hover:bg-gray-100 transition-colors"
+                            >
+                              <p className="text-gray-500 text-sm flex items-center justify-center">
+                                <Edit3 className="w-4 h-4 mr-2" />
+                                Write a description about yourself
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                              <p className="text-gray-500 text-sm">
+                                No description provided.
+                              </p>
+                            </div>
+                          )
+                        )}
+                        {isProfileOwner && displayBio && (
+                          <button
+                            onClick={() => {
+                              setBioText(displayBio || "");
+                              setIsEditingBio(true);
+                            }}
+                            className="absolute -right-2 -top-2 p-1.5 bg-gray-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-200"
+                          >
+                            <Edit3 className="w-3 h-3 text-gray-600" />
+                          </button>
+                        )}
                       </div>
                     )}
 
@@ -882,32 +1109,61 @@ export default function ProfileContent({
                     <h3 className="text-lg font-semibold text-gray-900">
                       Credentials & Highlights
                     </h3>
-                    <Button variant="ghost" size="sm">
-                      <Edit3 className="w-4 h-4" />
-                    </Button>
+                    {isProfileOwner && (
+                      <Button variant="ghost" size="sm" onClick={() => setIsCredentialsOpen(true)}>
+                        <Edit3 className="w-4 h-4" />
+                      </Button>
+                    )}
                   </div>
                   <div className="space-y-3">
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start text-gray-600 hover:text-gray-800"
-                    >
-                      <Briefcase className="w-4 h-4 mr-3" />
-                      Add employment credential
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start text-gray-600 hover:text-gray-800"
-                    >
-                      <GraduationCap className="w-4 h-4 mr-3" />
-                      Add education credential
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start text-gray-600 hover:text-gray-800"
-                    >
-                      <MapPin className="w-4 h-4 mr-3" />
-                      Add location credential
-                    </Button>
+                    {displayCredentials.employment ? (
+                      <div className="flex items-center text-gray-700">
+                        <Briefcase className="w-4 h-4 mr-3 text-gray-500" />
+                        <span>{displayCredentials.employment}</span>
+                      </div>
+                    ) : isProfileOwner ? (
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start text-gray-600 hover:text-gray-800"
+                        onClick={() => setIsCredentialsOpen(true)}
+                      >
+                        <Briefcase className="w-4 h-4 mr-3" />
+                        Add employment credential
+                      </Button>
+                    ) : null}
+
+                    {displayCredentials.education ? (
+                      <div className="flex items-center text-gray-700">
+                        <GraduationCap className="w-4 h-4 mr-3 text-gray-500" />
+                        <span>{displayCredentials.education}</span>
+                      </div>
+                    ) : isProfileOwner ? (
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start text-gray-600 hover:text-gray-800"
+                        onClick={() => setIsCredentialsOpen(true)}
+                      >
+                        <GraduationCap className="w-4 h-4 mr-3" />
+                        Add education credential
+                      </Button>
+                    ) : null}
+
+                    {displayCredentials.location ? (
+                      <div className="flex items-center text-gray-700">
+                        <MapPin className="w-4 h-4 mr-3 text-gray-500" />
+                        <span>{displayCredentials.location}</span>
+                      </div>
+                    ) : isProfileOwner ? (
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start text-gray-600 hover:text-gray-800"
+                        onClick={() => setIsCredentialsOpen(true)}
+                      >
+                        <MapPin className="w-4 h-4 mr-3" />
+                        Add location credential
+                      </Button>
+                    ) : null}
+
                     <div className="flex items-center text-sm text-gray-500 pt-2 border-t border-gray-100">
                       <Calendar className="w-4 h-4 mr-3" />
                       <span>

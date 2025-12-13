@@ -36,6 +36,7 @@ interface ModernQuestionCardProps {
         answerCount?: number;
         voteCount?: number;
         type?: 'question' | 'post';
+        tags?: string[];
     };
 }
 
@@ -139,6 +140,22 @@ export default function ModernQuestionCard({ question }: ModernQuestionCardProps
                         </span>
                     </div>
 
+                    {/* Tags */}
+                    {question.tags && question.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mb-3 pointer-events-auto relative z-10">
+                            {question.tags.map((tag, index) => (
+                                <Link
+                                    key={index}
+                                    href={`/search?q=${tag}`}
+                                    className="px-2 py-0.5 bg-blue-50 text-blue-600 text-[10px] sm:text-xs rounded-full hover:bg-blue-100 transition-colors"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    #{tag}
+                                </Link>
+                            ))}
+                        </div>
+                    )}
+
                     {/* Footer */}
                     <div className="flex items-center justify-between pt-3 border-t border-border">
                         <div className="flex items-center space-x-4">
@@ -167,6 +184,6 @@ export default function ModernQuestionCard({ question }: ModernQuestionCardProps
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

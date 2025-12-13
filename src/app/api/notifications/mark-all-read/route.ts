@@ -17,8 +17,8 @@ export async function POST(request: Request) {
 
 
         // Find the Sanity user ID based on the Clerk ID
-        const userQuery = defineQuery(`*[_type == "user" && (clerkId == $userId || _id == $userId)][0]._id`);
-        const sanityUserId = await adminClient.fetch(userQuery, { userId });
+        const userQueryNotifyRead = defineQuery(`*[_type == "user" && (clerkId == $userId || _id == $userId)][0]._id`);
+        const sanityUserId = await adminClient.fetch(userQueryNotifyRead, { userId });
 
         if (!sanityUserId) {
             return NextResponse.json({ success: true, updated: 0 });

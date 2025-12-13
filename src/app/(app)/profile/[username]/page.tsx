@@ -6,6 +6,7 @@ import ProfileContent from "@/components/ProfileContent";
 
 interface UserProfile {
   _id: string;
+  clerkId?: string;
   username: string | null;
   imageUrl: string | null;
   bio: string | null;
@@ -72,6 +73,7 @@ interface ProfilePageProps {
 const userQuery = defineQuery(`
   *[_type == "user" && username == $username][0] {
     _id,
+    clerkId,
     username,
     imageUrl,
     bio,
@@ -148,6 +150,7 @@ export default async function UserProfilePage({ params }: ProfilePageProps) {
       const caseInsensitiveQuery = defineQuery(`
         *[_type == "user" && lower(username) == lower($username)][0] {
           _id,
+          clerkId,
           username,
           imageUrl,
           bio,

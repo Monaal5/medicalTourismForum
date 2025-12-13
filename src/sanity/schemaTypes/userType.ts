@@ -74,6 +74,24 @@ export const userType = defineType({
       of: [{ type: "reference", to: [{ type: "user" }] }],
       description: "Users this user is following",
     }),
+    defineField({
+      name: "location",
+      title: "Location",
+      type: "string",
+      description: "User location credential (e.g. 'Lives in New York')",
+    }),
+    defineField({
+      name: "education",
+      title: "Education",
+      type: "string",
+      description: "User education credential (e.g. 'Studied at Harvard')",
+    }),
+    defineField({
+      name: "employment",
+      title: "Employment",
+      type: "string",
+      description: "User employment credential (e.g. 'Software Engineer at Google')",
+    }),
   ],
   preview: {
     select: {

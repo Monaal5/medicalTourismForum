@@ -7,6 +7,7 @@ import { generateUsername } from "@/lib/username";
 
 export async function POST(request: NextRequest) {
   try {
+    const body = await request.json();
     const {
       targetId,
       targetType, // 'post' or 'comment'
@@ -15,7 +16,7 @@ export async function POST(request: NextRequest) {
       userEmail,
       userFullName,
       userImageUrl,
-    } = await request.json();
+    } = body;
 
     if (!targetId || !targetType || !voteType || !userId) {
       return NextResponse.json(
@@ -41,18 +42,34 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Check if user already voted on this target
-    const existingVoteQuery = defineQuery(`
-      *[_type == "vote" && user._ref == $userId && ${targetType}._ref == $targetId][0] {
+    // Define static queries for type safety
+    const postVoteQuery = defineQuery(`
+      *[_type == "vote" && user._ref == $userId && post._ref == $targetId][0] {
         _id,
         voteType
       }
     `);
 
-    const existingVote = await sanityFetch({
-      query: existingVoteQuery,
-      params: { userId: sanityUser._id, targetId },
-    });
+    const commentVoteQuery = defineQuery(`
+      *[_type == "vote" && user._ref == $userId && comment._ref == $targetId][0] {
+        _id,
+        voteType
+      }
+    `);
+
+    // Choose the correct query based on targetType
+    let existingVote;
+    if (targetType === 'post') {
+      existingVote = await sanityFetch({
+        query: postVoteQuery,
+        params: { userId: sanityUser._id, targetId },
+      });
+    } else {
+      existingVote = await sanityFetch({
+        query: commentVoteQuery,
+        params: { userId: sanityUser._id, targetId },
+      });
+    }
 
     if (existingVote.data) {
       // User already voted, update or remove vote
@@ -132,22 +149,40 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get vote count and user's vote
-    const voteQuery = defineQuery(`
+    const postVoteStatsQuery = defineQuery(`
       {
-        "votes": *[_type == "vote" && ${targetType}._ref == $targetId] {
+        "votes": *[_type == "vote" && post._ref == $targetId] {
           voteType
         },
-        "userVote": *[_type == "vote" && user._ref == $userId && ${targetType}._ref == $targetId][0] {
+        "userVote": *[_type == "vote" && user._ref == $userId && post._ref == $targetId][0] {
           voteType
         }
       }
     `);
 
-    const result = await sanityFetch({
-      query: voteQuery,
-      params: { targetId, userId },
-    });
+    const commentVoteStatsQuery = defineQuery(`
+      {
+        "votes": *[_type == "vote" && comment._ref == $targetId] {
+          voteType
+        },
+        "userVote": *[_type == "vote" && user._ref == $userId && comment._ref == $targetId][0] {
+          voteType
+        }
+      }
+    `);
+
+    let result;
+    if (targetType === 'post') {
+      result = await sanityFetch({
+        query: postVoteStatsQuery,
+        params: { targetId, userId },
+      });
+    } else {
+      result = await sanityFetch({
+        query: commentVoteStatsQuery,
+        params: { targetId, userId },
+      });
+    }
 
     if (result.data) {
       const votes = result.data.votes || [];

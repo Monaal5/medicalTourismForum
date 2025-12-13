@@ -17,7 +17,7 @@ export const subredditType = defineType({
       name: 'description',
       title: 'Description',
       type: 'text',
-    
+
       description: 'Brief description of what this subreddit is about'
     }),
     defineField({
@@ -26,7 +26,7 @@ export const subredditType = defineType({
       type: 'slug',
       options: {
         source: 'title',
-        
+
       },
       validation: (Rule) => Rule.required(),
       description: 'Url friendly identifier for the subreddit',
@@ -35,7 +35,7 @@ export const subredditType = defineType({
       name: 'image',
       title: 'Subreddit Image',
       type: 'image',
-     
+
       fields: [
         {
           name: 'alt',
@@ -61,6 +61,13 @@ export const subredditType = defineType({
       initialValue: () => new Date().toISOString(),
       validation: (Rule) => Rule.required(),
       description: 'When this subreddit was created'
+    }),
+    defineField({
+      name: 'isDeleted',
+      title: 'Is Deleted',
+      type: 'boolean',
+      initialValue: false,
+      description: 'Whether this subreddit has been deleted'
     })
   ],
   preview: {
