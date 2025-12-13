@@ -31,7 +31,7 @@ import { Label } from "@/components/ui/label";
 
 interface UserProfile {
   _id: string;
-  clerkId?: string;
+  clerkId?: string | null;
   username: string | null;
   imageUrl: string | null;
   bio: string | null;
@@ -41,8 +41,8 @@ interface UserProfile {
   postsCount?: number;
   followersCount?: number;
   followingCount?: number;
-  followers?: Array<{ _id: string; username: string; imageUrl: string }>;
-  following?: Array<{ _id: string; username: string; imageUrl: string }>;
+  followers?: Array<{ _id: string; username: string | null; imageUrl: string | null }>;
+  following?: Array<{ _id: string; username: string | null; imageUrl: string | null }>;
   employment?: string | null;
   education?: string | null;
   location?: string | null;
@@ -80,16 +80,16 @@ interface UserAnswer {
 
 interface UserPost {
   _id: string;
-  postTitle: string;
-  body?: any[];
+  postTitle: string | null;
+  body?: any[] | null;
   image?: any;
-  publishedAt: string;
+  publishedAt: string | null;
   subreddit: {
-    title: string;
+    title: string | null;
     slug: {
-      current: string;
-    };
-  };
+      current?: string | null;
+    } | null;
+  } | null;
   commentCount?: number;
 }
 
@@ -602,7 +602,7 @@ export default function ProfileContent({
                             <MessageCircle className="w-3.5 h-3.5" />
                             <span>{post.commentCount || 0}</span>
                           </div>
-                          <span>{formatDistanceToNow(new Date(post.publishedAt))} ago</span>
+                          <span>{post.publishedAt ? formatDistanceToNow(new Date(post.publishedAt)) : ""} ago</span>
                         </div>
                         <Link href={`/post/${post._id}`} className="flex items-center space-x-1 text-blue-600 text-xs font-medium">
                           <MessageCircle className="w-3.5 h-3.5" />
@@ -987,9 +987,9 @@ export default function ProfileContent({
                             <div className="flex items-center justify-between">
                               <div className="flex items-center space-x-4 text-sm text-gray-500">
                                 <span>
-                                  c/{post.subreddit.title} •{" "}
+                                  c/{post.subreddit?.title || "unknown"} •{" "}
                                   {post.commentCount || 0} comments •{" "}
-                                  {formatDistanceToNow(new Date(post.publishedAt))} ago
+                                  {post.publishedAt ? formatDistanceToNow(new Date(post.publishedAt)) : ""} ago
                                 </span>
                               </div>
                               <div className="flex items-center space-x-2">
@@ -1029,7 +1029,7 @@ export default function ProfileContent({
                             >
                               <Image
                                 src={follower.imageUrl || "/default-avatar.png"}
-                                alt={follower.username}
+                                alt={follower.username || "User"}
                                 width={48}
                                 height={48}
                                 className="rounded-full"
@@ -1069,7 +1069,7 @@ export default function ProfileContent({
                             >
                               <Image
                                 src={followedUser.imageUrl || "/default-avatar.png"}
-                                alt={followedUser.username}
+                                alt={followedUser.username || "User"}
                                 width={48}
                                 height={48}
                                 className="rounded-full"

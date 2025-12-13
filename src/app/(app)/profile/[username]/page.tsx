@@ -6,7 +6,7 @@ import ProfileContent from "@/components/ProfileContent";
 
 interface UserProfile {
   _id: string;
-  clerkId?: string;
+  clerkId?: string | null;
   username: string | null;
   imageUrl: string | null;
   bio: string | null;
@@ -15,8 +15,8 @@ interface UserProfile {
   answersCount?: number;
   followersCount?: number;
   followingCount?: number;
-  followers?: Array<{ _id: string; username: string; imageUrl: string }>;
-  following?: Array<{ _id: string; username: string; imageUrl: string }>;
+  followers?: Array<{ _id: string; username: string | null; imageUrl: string | null }>;
+  following?: Array<{ _id: string; username: string | null; imageUrl: string | null }>;
 }
 
 interface UserQuestion {
@@ -51,16 +51,16 @@ interface UserAnswer {
 
 interface UserPost {
   _id: string;
-  postTitle: string;
-  body?: any[];
+  postTitle: string | null;
+  body?: any[] | null;
   image?: any;
-  publishedAt: string;
+  publishedAt: string | null;
   subreddit: {
-    title: string;
+    title: string | null;
     slug: {
-      current: string;
-    };
-  };
+      current?: string | null;
+    } | null;
+  } | null;
   commentCount?: number;
 }
 
