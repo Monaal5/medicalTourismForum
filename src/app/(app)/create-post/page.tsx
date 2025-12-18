@@ -1,69 +1,11 @@
-import { sanityFetch } from "@/sanity/lib/live";
-import { defineQuery } from "groq";
-import { formatDistanceToNow } from "date-fns";
-import { Plus, Users } from "lucide-react";
-import Image from "next/image";
+import { getHomeCategories } from "@/lib/db/queries";
+import { Plus, Users, MessageSquare, FileText, BarChart3 } from "lucide-react";
 import Link from "next/link";
 
-interface Category {
-  _id: string;
-  name: string;
-  slug: {
-    current: string;
-  };
-  description?: string;
-  icon?: string;
-  color?: string;
-  questionCount?: number;
-}
-
-const categoriesQuery = defineQuery(`
-  *[_type == "category"] | order(name asc) {
-    _id,
-    name,
-    slug,
-    description,
-    icon,
-    color,
-    "questionCount": count(*[_type == "question" && references(^._id)])
-  }
-`);
+export const dynamic = "force-dynamic";
 
 export default async function CreatePostPage() {
-  let categories: Category[] = [];
-  let loading = false;
-
-  try {
-    const result = await sanityFetch({
-      query: categoriesQuery,
-      params: {},
-    });
-
-    if (result.data) {
-      categories = result.data as Category[];
-    }
-  } catch (error) {
-    console.error("Error fetching subreddits:", error);
-    loading = true;
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-4xl mx-auto p-4">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-gray-300 rounded w-1/4"></div>
-            <div className="h-4 bg-gray-300 rounded w-1/2"></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-32 bg-gray-300 rounded"></div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const categories = await getHomeCategories();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -76,7 +18,7 @@ export default async function CreatePostPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {categories.map((category) => (
+          {categories.map((category: any) => (
             <Link
               key={category._id}
               href={`/new-post?category=${category._id}`}
@@ -87,20 +29,27 @@ export default async function CreatePostPage() {
                   className="w-10 h-10 rounded-full flex items-center justify-center mr-3 text-white"
                   style={{ backgroundColor: category.color || "#ef4444" }}
                 >
-                  {/* Simple icon fallback or use lucide based on string name - simplifying for now */}
                   <span className="text-lg font-bold">{category.name.charAt(0)}</span>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900">
+                  <h3 className="font-semibold text-gray-900 line-clamp-1">
                     {category.name}
                   </h3>
-                  <p className="text-xs text-gray-500">
-                    {category.questionCount || 0} questions
-                  </p>
+                  <div className="flex flex-wrap gap-3 text-xs text-gray-500 mt-1">
+                    <span className="flex items-center gap-1">
+                      <MessageSquare className="w-3 h-3" /> {category.questionCount || 0}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <FileText className="w-3 h-3" /> {category.postCount || 0}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <BarChart3 className="w-3 h-3" /> {category.pollCount || 0}
+                    </span>
+                  </div>
                 </div>
               </div>
-              <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                {category.description}
+              <p className="text-sm text-gray-600 mb-3 line-clamp-2 min-h-[2.5em]">
+                {category.description || "No description available."}
               </p>
               <div className="flex items-center text-blue-600 text-sm font-medium">
                 <Plus className="w-4 h-4 mr-1" />

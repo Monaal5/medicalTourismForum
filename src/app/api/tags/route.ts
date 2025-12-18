@@ -1,16 +1,27 @@
+import { NextRequest, NextResponse } from "next/server";
+import { supabaseAdmin as supabase } from "@/lib/supabase";
 
-import { NextResponse } from "next/server";
-import { adminClient } from "@/sanity/lib/adminClient";
+export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
-        // Fetch unique tags from all questions
-        // This GROQ query collects all tags arrays and flattens them, then deduplicates
-        const tags = await adminClient.fetch(
-            `array::unique(*[_type == "question" && defined(tags)].tags[])`
-        );
+        const searchParams = request.nextUrl.searchParams;
+        const query = searchParams.get("q") || "";
 
-        return NextResponse.json({ tags: tags || [] });
+        // Use RPC to get existing tags (requires 'get_matching_tags' function in DB)
+        const { data: tags, error } = await supabase
+            .rpc('get_matching_tags', { query_text: query });
+
+        if (error) {
+            console.error("Supabase RPC Error:", error);
+            // Fallback: Return empty or handle gracefully if function missing
+            return NextResponse.json({ tags: [] });
+        }
+
+        // Map result [{tag: "name", count: N}] to ["name"]
+        const tagList = tags?.map((t: any) => t.tag) || [];
+
+        return NextResponse.json({ tags: tagList });
     } catch (error) {
         console.error("Error fetching tags:", error);
         return NextResponse.json({ error: "Failed to fetch tags" }, { status: 500 });

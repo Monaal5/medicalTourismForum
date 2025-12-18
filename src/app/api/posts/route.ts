@@ -1,20 +1,34 @@
+
 import { NextRequest, NextResponse } from "next/server";
-import { adminClient } from "@/sanity/lib/adminClient";
-import { addUser } from "@/sanity/lib/user/addUser";
-import { generateUsername } from "@/lib/username";
+import { supabaseAdmin as supabase } from "@/lib/supabase";
 import { extractHashtags } from "@/lib/hashtags";
+
+// IMPORTANT: MEDIA UPLOAD TO SUPABASE STORAGE
+// We assuming the bucket 'post-media' exists or we need to create it.
+// Previous Sanity code handled uploads. Supabase requires storage bucket.
+// For now, I will omit the file upload implementation details or put placeholder
+// assuming 'post-images' bucket is public.
 
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.formData();
+    let formData;
+    try {
+      formData = await request.formData();
+    } catch (e: any) {
+      console.error("Error parsing FormData:", e);
+      return NextResponse.json(
+        { error: "Failed to parse request body. File size might be too large." },
+        { status: 400 }
+      );
+    }
 
     const postTitle = formData.get("postTitle") as string;
     const postBody = formData.get("postBody") as string | null;
-    const subredditId = formData.get("subredditId") as string;
+    const subredditId = (formData.get("subredditId") || formData.get("communityId")) as string;
     const userId = formData.get("userId") as string;
-    const userEmail = formData.get("userEmail") as string | null;
-    const userFullName = formData.get("userFullName") as string | null;
-    const userImageUrl = formData.get("userImageUrl") as string | null;
+    // const userEmail = formData.get("userEmail") as string | null;
+    // const userFullName = formData.get("userFullName") as string | null;
+    // const userImageUrl = formData.get("userImageUrl") as string | null;
 
     // Get all files with key 'mediaFiles'
     const mediaFiles = formData.getAll("mediaFiles") as File[];
@@ -28,157 +42,177 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Ensure user exists in Sanity
-    // First, check if user already exists by Clerk ID
-    let sanityUser = await adminClient.fetch(
-      `*[_type == "user" && clerkId == $clerkId][0]`,
-      { clerkId: userId }
-    );
+    // 1. Get User ID (internal UUID) - using clerk_id
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('clerk_id', userId)
+      .single();
 
-    if (!sanityUser) {
-      // User doesn't exist, create new one
-      console.log("Creating new user in Sanity...");
-      sanityUser = await addUser({
-        id: userId,
-        username: generateUsername(userFullName || "User", userId),
-        email: userEmail || "user@example.com",
-        imageUrl: userImageUrl || "",
-      });
+    if (userError || !user) {
+      console.error("User not found for post creation:", userId);
+      return NextResponse.json({ error: "User not found." }, { status: 404 });
     }
 
-    // Process Media Gallery
+    // 2. Process Media (Client-side uploaded URLs or Server-side fallback)
     const galleryAssets: any[] = [];
-    let mainImageAsset = null;
+    let mainImageUrl: string | null = null;
 
-    if (mediaFiles && mediaFiles.length > 0) {
-      console.log(`Processing ${mediaFiles.length} gallery items...`);
+    // Check for client-side uploaded media
+    const mediaUrlsJson = formData.get("mediaUrls") as string | null;
 
-      for (const file of mediaFiles) {
-        if (file.size > 0) {
-          try {
-            const arrayBuffer = await file.arrayBuffer();
-            const buffer = Buffer.from(arrayBuffer);
-            const isVideo = file.type.startsWith("video/");
-            const assetType = isVideo ? "file" : "image";
-
-            console.log(`Uploading ${assetType}: ${file.name} (${file.size} bytes)...`);
-
-            const asset = await adminClient.assets.upload(assetType, buffer, {
-              filename: `${isVideo ? 'video' : 'img'}-${Date.now()}-${file.name}`,
-              contentType: file.type,
+    if (mediaUrlsJson) {
+      try {
+        const uploadedMedia = JSON.parse(mediaUrlsJson);
+        if (Array.isArray(uploadedMedia)) {
+          uploadedMedia.forEach((media: any) => {
+            galleryAssets.push({
+              _type: media.type === 'video' ? "file" : "image",
+              url: media.url,
+              asset: { url: media.url }
             });
 
-            if (isVideo) {
-              galleryAssets.push({
-                _type: "file",
-                asset: {
-                  _type: "reference",
-                  _ref: asset._id
-                },
-                title: file.name
-              });
-            } else {
-              galleryAssets.push({
-                _type: "image",
-                asset: {
-                  _type: "reference",
-                  _ref: asset._id
-                },
-                alt: file.name,
-                hotspot: {
-                  _type: "sanity.imageHotspot",
-                  x: 0.5, y: 0.5, height: 1, width: 1
-                }
-              });
-              // Keep reference to at least one image to use as main image if needed
-              if (!mainImageAsset) {
-                mainImageAsset = asset;
-              }
+            if (!mainImageUrl && media.type === 'image') {
+              mainImageUrl = media.url;
             }
-          } catch (err) {
-            console.error("Error uploading gallery item:", err);
-          }
+          });
+        }
+      } catch (e) {
+        console.error("Error parsing mediaUrls:", e);
+      }
+    }
+    // Fallback: Legacy Server-side Upload (only if no client uploads provided)
+    else if (mediaFiles && mediaFiles.length > 0) {
+      console.log(`Processing ${mediaFiles.length} gallery items... (Legacy Upload)`);
+
+      // Setup Storage Client (already have 'supabase')
+      // Ensure 'post-images' bucket exists in Supabase Dashboard!
+
+      for (const file of mediaFiles) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${user.id}-${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const filePath = `${fileName}`;
+
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('post-images')
+          .upload(filePath, file);
+
+        if (uploadError) {
+          console.error("Upload error:", uploadError);
+          continue;
+        }
+
+        // Get Public URL
+        const { data: { publicUrl } } = supabase.storage
+          .from('post-images')
+          .getPublicUrl(filePath);
+
+        // Add to gallery
+        galleryAssets.push({
+          _type: file.type.startsWith('video') ? "file" : "image",
+          url: publicUrl,
+          asset: { url: publicUrl } // Sanity compat
+        });
+
+        if (!mainImageUrl && file.type.startsWith('image')) {
+          mainImageUrl = publicUrl;
         }
       }
     }
 
-    // Create the post
-    const postData: any = {
-      _type: "post",
-      postTitle: postTitle,
-      author: {
-        _type: "reference",
-        _ref: sanityUser._id,
-      },
-      // Map subredditId to category field as requested by current logic
-      category: {
-        _type: "reference",
-        _ref: subredditId,
-      },
-      body: postBody
-        ? [
-          {
-            _type: "block",
-            children: [
-              {
-                _type: "span",
-                text: postBody,
-              },
-            ],
-          },
-        ]
-        : [],
-      publishedAt: new Date().toISOString(),
-      isReported: false,
-      isDeleted: false,
-    };
-
-    if (galleryAssets.length > 0) {
-      postData.contentGallery = galleryAssets;
-      // If we found an image in the gallery, use it as main image
-      // (This behavior was present in previous logic)
-      if (mainImageAsset) {
-        postData.image = {
-          _type: "image",
-          asset: {
-            _type: "reference",
-            _ref: mainImageAsset._id,
-          },
-          alt: `Post image for ${postTitle}`,
-          hotspot: { _type: "sanity.imageHotspot", x: 0.5, y: 0.5, height: 1, width: 1 },
-        };
+    // 3. Extract Tags
+    const explicitTagsJson = formData.get("tags") as string | null;
+    let explicitTags: string[] = [];
+    if (explicitTagsJson) {
+      try {
+        explicitTags = JSON.parse(explicitTagsJson);
+      } catch (e) {
+        console.error("Error parsing tags:", e);
       }
     }
 
-    // Extract tags
     const extractedTags = [
+      ...explicitTags,
       ...extractHashtags(postTitle),
       ...extractHashtags(postBody || ""),
     ];
+    const tags = extractedTags.length > 0 ? [...new Set(extractedTags)] : [];
 
-    if (extractedTags.length > 0) {
-      postData.tags = extractedTags;
-    }
+    // 4. Create Post
+    let community_id: string | null = (formData.get("communityId") || formData.get("subredditId")) as string | null;
+    let category_id: string | null = formData.get("categoryId") as string | null;
 
-    console.log("Creating post in Sanity...");
-
-    try {
-      const post = await adminClient.create(postData);
-      console.log("Post created successfully:", post._id);
-      return NextResponse.json({ post });
-    } catch (createError: any) {
-      console.error("Sanity create failed:", createError);
-      // Fallback logic for subreddit reference if category fails
-      if (createError.message && createError.message.includes("Reference")) {
-        console.log("Attempting fallback: assigning to subreddit field instead...");
-        delete postData.category;
-        postData.subreddit = { _type: "reference", _ref: subredditId };
-        const postRetry = await adminClient.create(postData);
-        console.log("Retry successful:", postRetry._id);
-        return NextResponse.json({ post: postRetry });
+    // Validate IDs exist if provided (optional but good practice)
+    // If only subredditId was provided (legacy), try to resolve it
+    if (community_id && !category_id) {
+      // Check if it is a community
+      const { data: comm } = await supabase.from('communities').select('id').eq('id', community_id).single();
+      if (!comm) {
+        // If not community, maybe it's a category?
+        const { data: cat } = await supabase.from('categories').select('id').eq('id', community_id).single();
+        if (cat) {
+          category_id = cat.id;
+          community_id = null; // It was actually a category
+        }
       }
-      throw createError;
     }
+
+    const isAnonymous = formData.get("isAnonymous") === "true";
+
+    const { data: newPost, error: createError } = await supabase
+      .from('posts')
+      .insert({
+        title: postTitle,
+        body: postBody ? { content: postBody } : null, // Simple JSON for now
+        author_id: user.id,
+        community_id: community_id,
+        category_id: category_id,
+        image_url: mainImageUrl,
+        gallery: galleryAssets.length > 0 ? galleryAssets : null,
+        tags: tags,
+        is_anonymous: isAnonymous,
+        published_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (createError) {
+      console.error("Supabase create failed:", createError);
+      return NextResponse.json({ error: createError.message }, { status: 500 });
+    }
+
+    console.log("Post created successfully:", newPost.id);
+
+    // 5. Create Poll (if data provided)
+    const pollDataJson = formData.get("pollData") as string | null;
+    if (pollDataJson) {
+      try {
+        const { question, options } = JSON.parse(pollDataJson);
+        if (question && options && Array.isArray(options) && options.length >= 2) {
+          const { data: poll, error: pollError } = await supabase.from('polls').insert({
+            question,
+            author_id: user.id,
+            post_id: newPost.id,
+            expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // Default 7 days
+          }).select().single();
+
+          if (!pollError && poll) {
+            // Insert options
+            const optionsData = options.map((opt: string) => ({
+              poll_id: poll.id,
+              option_text: opt
+            }));
+            await supabase.from('poll_options').insert(optionsData);
+          } else {
+            console.error("Poll creation failed:", pollError);
+          }
+        }
+      } catch (e) {
+        console.error("Error creating poll linked to post:", e);
+      }
+    }
+
+    return NextResponse.json({ post: { _id: newPost.id } }); // Return Sanity-like ID
 
   } catch (error: any) {
     console.error("Error processing post request:", error);

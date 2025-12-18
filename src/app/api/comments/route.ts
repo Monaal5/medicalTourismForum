@@ -1,7 +1,7 @@
+
 import { NextRequest, NextResponse } from "next/server";
-import { adminClient } from "@/sanity/lib/adminClient";
-import { addUser } from "@/sanity/lib/user/addUser";
-import { generateUsername } from "@/lib/username";
+import { supabaseAdmin as supabase } from "@/lib/supabase";
+import { createNotification } from "@/lib/notifications";
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,25 +11,16 @@ export async function POST(request: NextRequest) {
 
     const {
       comment,
-      content,  // For answer comments
+      content,  // For answer comments, frontend might send 'content'
       postId,
       answerId,
-      parentCommentId,
+      parentCommentId, // Reply
       userId,
-      userEmail,
-      userFullName,
-      userImageUrl,
     } = body;
 
     const commentText = comment || content;
 
     if (!commentText || (!postId && !answerId) || !userId) {
-      console.log("❌ Missing required fields:", {
-        commentText: !!commentText,
-        postId: !!postId,
-        answerId: !!answerId,
-        userId: !!userId
-      });
       return NextResponse.json(
         {
           error: "Missing required fields",
@@ -39,99 +30,81 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify answer or post exists
-    if (answerId) {
-      console.log("Verifying answer exists...");
-      const answerExists = await adminClient.fetch(
-        `*[_type == "answer" && _id == $answerId && !isDeleted][0]{ _id }`,
-        { answerId }
-      );
+    // 1. Get User
+    const { data: user } = await supabase.from('users').select('id, username').eq('clerk_id', userId).single();
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
 
-      if (!answerExists) {
-        console.log("❌ Answer not found:", answerId);
-        return NextResponse.json(
-          { error: "Answer not found or has been deleted" },
-          { status: 404 },
-        );
+    // 2. Create Comment
+    const { data: newComment, error } = await supabase
+      .from('comments')
+      .insert({
+        author_id: user.id,
+        post_id: postId || null,
+        answer_id: answerId || null,
+        parent_comment_id: parentCommentId || null,
+        body: commentText
+      })
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === '23503') { // Foreign key violation
+        return NextResponse.json({ error: "Post or Answer not found" }, { status: 404 });
       }
-      console.log("✓ Answer exists");
+      throw error;
     }
 
-    // Ensure user exists in Sanity
-    console.log("Fetching/creating user in Sanity...");
+    console.log("✓ Comment created successfully:", newComment.id);
 
-    // First, check if user already exists by Clerk ID
-    let sanityUser = await adminClient.fetch(
-      `*[_type == "user" && clerkId == $clerkId][0]`,
-      { clerkId: userId }
-    );
+    // 3. Send Notification
+    try {
+      let recipientId = null;
+      let notifType: 'comment' | 'reply' = 'comment';
 
-    if (sanityUser) {
-      console.log("✓ Existing user found:", sanityUser._id, "with username:", sanityUser.username);
-    } else {
-      // User doesn't exist, create new one
-      console.log("Creating new user in Sanity...");
-      sanityUser = await addUser({
-        id: userId,
-        username: generateUsername(userFullName || "User", userId),
-        email: userEmail || "user@example.com",
-        imageUrl: userImageUrl || "",
-      });
-      console.log("✓ New user created:", sanityUser._id);
+      if (parentCommentId) {
+        const { data: parent } = await supabase.from('comments').select('author_id').eq('id', parentCommentId).single();
+        if (parent) {
+          recipientId = parent.author_id;
+          notifType = 'reply';
+        }
+      } else if (postId) {
+        const { data: post } = await supabase.from('posts').select('author_id').eq('id', postId).single();
+        if (post) recipientId = post.author_id;
+      } else if (answerId) {
+        const { data: answer } = await supabase.from('answers').select('author_id').eq('id', answerId).single();
+        if (answer) recipientId = answer.author_id;
+      }
+
+      if (recipientId) {
+        await createNotification({
+          recipientId,
+          senderId: user.id,
+          type: notifType,
+          postId,
+          answerId,
+          commentId: newComment.id, // Direct link to this comment?
+          // questionId? If answerId, maybe fetch questionId? 
+          // Let's keep it simple.
+        });
+      }
+
+    } catch (notifError) {
+      console.error("Error sending notification:", notifError);
     }
-
-    // Create the comment
-    const commentData: any = {
-      _type: "comment",
-      comment: commentText,
-      author: {
-        _type: "reference",
-        _ref: sanityUser._id,
-      },
-      createdAt: new Date().toISOString(),
-      isReported: false,
-      isDeleted: false,
-    };
-
-    // Add post or answer reference
-    if (postId) {
-      commentData.post = {
-        _type: "reference",
-        _ref: postId,
-      };
-    } else if (answerId) {
-      commentData.answer = {
-        _type: "reference",
-        _ref: answerId,
-      };
-    }
-
-    // Add parent comment reference if this is a reply
-    if (parentCommentId) {
-      commentData.parentComment = {
-        _type: "reference",
-        _ref: parentCommentId,
-      };
-    }
-
-    console.log("Creating comment in Sanity...");
-    const newComment = await adminClient.create(commentData);
-    console.log("✓ Comment created successfully:", newComment._id, 'for', postId ? `post ${postId}` : `answer ${answerId}`);
 
     return NextResponse.json({
       success: true,
-      comment: newComment,
+      comment: { ...newComment, _id: newComment.id },
       message: "Comment created successfully"
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("❌ Error creating comment:", error);
-    console.error("Error details:", error instanceof Error ? error.message : 'Unknown error');
-    console.error("Error stack:", error instanceof Error ? error.stack : 'No stack trace');
-
     return NextResponse.json(
       {
-        error: "Failed to create comment",
-        details: error instanceof Error ? error.message : 'Unknown error'
+        error: "Failed to create comment: " + error.message,
+        details: error.message
       },
       { status: 500 },
     );

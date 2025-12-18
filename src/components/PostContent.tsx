@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -11,8 +11,11 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
+  Flag,
+  Loader2,
   Video
 } from "lucide-react";
+import ReportDialog from "@/components/ReportDialog";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -21,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useVoting } from "@/hooks/useVoting";
 import CommentCard from "@/components/CommentCard";
 import { urlFor } from "@/sanity/lib/image";
+import { PollDisplay } from "@/components/PollDisplay";
 
 interface PostWithDetails {
   _id: string;
@@ -62,6 +66,7 @@ interface PostWithDetails {
     };
   };
   commentCount?: number;
+  poll?: any;
 }
 
 interface CommentWithDetails {
@@ -91,9 +96,22 @@ export default function PostContent({ post, comments, onCommentAdded }: PostCont
   const [newComment, setNewComment] = useState("");
   const [deletingPost, setDeletingPost] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [showMenu, setShowMenu] = useState(false);
 
   // Check if current user is the post author
   const isAuthor = user?.id === post.author.clerkId;
+
+  useEffect(() => {
+    // Increment view count
+    const incrementView = async () => {
+      try {
+        await fetch(`/api/posts/${post._id}/view`, { method: 'POST' });
+      } catch (err) {
+        console.error("Failed to increment view count", err);
+      }
+    };
+    incrementView();
+  }, [post._id]);
 
   // Use voting hook for the post
   const {
@@ -301,9 +319,9 @@ export default function PostContent({ post, comments, onCommentAdded }: PostCont
                 <span>Posted by u/{post.author.username}</span>
                 <span className="mx-1">•</span>
                 <span>
-                  {formatDistanceToNow(new Date(post.publishedAt), {
+                  {post.publishedAt ? formatDistanceToNow(new Date(post.publishedAt), {
                     addSuffix: true,
-                  })}
+                  }) : "Just now"}
                 </span>
                 {isAuthor && (
                   <button
@@ -317,9 +335,30 @@ export default function PostContent({ post, comments, onCommentAdded }: PostCont
                   </button>
                 )}
                 {!isAuthor && (
-                  <button className="ml-auto text-gray-400 hover:text-gray-600" suppressHydrationWarning>
-                    <MoreHorizontal className="w-4 h-4" />
-                  </button>
+                  <div className="relative ml-auto">
+                    <button
+                      onClick={() => setShowMenu(!showMenu)}
+                      className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100"
+                    >
+                      <MoreHorizontal className="w-4 h-4" />
+                    </button>
+                    {showMenu && (
+                      <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10 py-1">
+                        <ReportDialog
+                          targetId={post._id}
+                          targetType="post"
+                          userId={user?.id}
+                          trigger={
+                            <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2">
+                              <Flag className="w-4 h-4" />
+                              <span>Report Post</span>
+                            </button>
+                          }
+                          onOpenChange={(open) => !open && setShowMenu(false)}
+                        />
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 
@@ -327,15 +366,21 @@ export default function PostContent({ post, comments, onCommentAdded }: PostCont
                 {post.postTitle}
               </h1>
 
-              {post.body && post.body.length > 0 && (
+              {post.body && (
                 <div className="text-gray-700 mb-4">
-                  {post.body.map((block: any, index: number) => (
-                    <p key={index} className="mb-2">
-                      {block.children
-                        ?.map((child: any, childIndex: number) => child.text)
-                        .join("")}
-                    </p>
-                  ))}
+                  {Array.isArray(post.body) ? (
+                    post.body.map((block: any, index: number) => (
+                      <p key={index} className="mb-2">
+                        {block.children
+                          ?.map((child: any, childIndex: number) => child.text)
+                          .join("")}
+                      </p>
+                    ))
+                  ) : typeof post.body === 'string' ? (
+                    <p>{post.body}</p>
+                  ) : (post.body as any).content ? (
+                    <p>{(post.body as any).content}</p>
+                  ) : null}
                 </div>
               )}
 
@@ -371,6 +416,7 @@ export default function PostContent({ post, comments, onCommentAdded }: PostCont
                         <button
                           onClick={handlePrevSlide}
                           className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-1.5 rounded-full hover:bg-black/70 transition-colors z-10"
+                          suppressHydrationWarning
                         >
                           <ChevronLeft className="w-6 h-6" />
                         </button>
@@ -379,6 +425,7 @@ export default function PostContent({ post, comments, onCommentAdded }: PostCont
                         <button
                           onClick={handleNextSlide}
                           className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-1.5 rounded-full hover:bg-black/70 transition-colors z-10"
+                          suppressHydrationWarning
                         >
                           <ChevronRight className="w-6 h-6" />
                         </button>
@@ -399,6 +446,13 @@ export default function PostContent({ post, comments, onCommentAdded }: PostCont
                       </div>
                     </>
                   )}
+                </div>
+              )}
+
+              {/* Poll Display */}
+              {post.poll && (
+                <div className="mb-6">
+                  <PollDisplay initialPoll={post.poll} />
                 </div>
               )}
 

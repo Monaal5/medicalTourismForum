@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { adminClient } from "@/sanity/lib/adminClient";
-import { defineQuery } from "groq";
+import { supabaseAdmin as supabase } from "@/lib/supabase";
 
 export async function GET(request: Request) {
     try {
@@ -14,37 +13,60 @@ export async function GET(request: Request) {
             );
         }
 
-        // Find the Sanity user ID based on the Clerk ID
-        const userQueryNotifyList = defineQuery(`*[_type == "user" && (clerkId == $userId || _id == $userId)][0]._id`);
-        const sanityUserId = await adminClient.fetch(userQueryNotifyList, { userId });
+        // Find the Supabase user ID based on the Clerk ID
+        const { data: user } = await supabase
+            .from('users')
+            .select('id')
+            .eq('clerk_id', userId)
+            .single();
 
-        if (!sanityUserId) {
+        if (!user) {
             return NextResponse.json({ success: true, notifications: [] });
         }
 
-        const notificationsListQuery = defineQuery(`*[_type == "notification" && recipient._ref == $sanityUserId] | order(createdAt desc) {
-            _id,
-            type,
-            read,
-            createdAt,
-            sender->{
-                username,
-                imageUrl
+        const { data: notifications, error } = await supabase
+            .from('notifications')
+            .select(`
+id,
+    type,
+    read,
+    created_at,
+    sender: users!sender_id(
+        username,
+        image_url
+    ),
+        question: questions(
+            id,
+            title
+        )
+            `)
+            .eq('recipient_id', user.id)
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error("Error fetching notifications query:", error);
+            throw error;
+        }
+
+        const mappedNotifications = notifications.map((n: any) => ({
+            _id: n.id,
+            type: n.type,
+            read: n.read,
+            createdAt: n.created_at,
+            sender: {
+                username: n.sender?.username || "Unknown",
+                imageUrl: n.sender?.image_url
             },
-            question->{
-                _id,
-                title,
-                slug
-            }
-        }`);
-
-        const notifications = await adminClient.fetch(notificationsListQuery, { sanityUserId });
-
-
+            question: n.question ? {
+                _id: n.question.id,
+                title: n.question.title,
+                slug: { current: n.question.id } // Use ID as slug or fetch slug if exists
+            } : null
+        }));
 
         return NextResponse.json({
             success: true,
-            notifications,
+            notifications: mappedNotifications,
         });
     } catch (error) {
         console.error("Error fetching notifications:", error);
@@ -67,10 +89,12 @@ export async function PATCH(request: Request) {
             );
         }
 
-        await adminClient
-            .patch(notificationId)
-            .set({ read: true })
-            .commit();
+        const { error } = await supabase
+            .from('notifications')
+            .update({ read: true })
+            .eq('id', notificationId);
+
+        if (error) throw error;
 
         return NextResponse.json({ success: true });
     } catch (error) {

@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import LanguageMenu from "@/components/LanguageMenu";
 import {
   useUser,
   SignInButton,
@@ -573,7 +574,10 @@ export default function QuoraHeader() {
                         </div>
                       )}
                     </div>
-                    <Globe className="w-5 h-5 text-gray-600" />
+
+
+
+                    <LanguageMenu />
                   </div>
 
                   <div className="hidden md:flex items-center space-x-2">
@@ -585,7 +589,15 @@ export default function QuoraHeader() {
                       <Plus className="w-4 h-4" />
                       <span className="hidden xs:inline">Add question</span>
                       <span className="xs:hidden">Ask</span>
-                      <ChevronDown className="w-3 h-3 sm:w-4 sm:h-4" />
+                    </Button>
+                    <Button
+                      className="bg-orange-500 hover:bg-orange-600 text-white flex items-center space-x-1 text-sm sm:text-base px-3 sm:px-4"
+                      onClick={() => router.push("/create-poll")}
+                      size="sm"
+                      title="Create Poll"
+                    >
+                      <BarChart3 className="w-4 h-4" />
+                      <span className="hidden xs:inline">Poll</span>
                     </Button>
                     {/* Backup UserButton for additional logout option */}
                     <UserButton
@@ -617,160 +629,168 @@ export default function QuoraHeader() {
             </div>
           </div>
         </div>
-      </header>
+      </header >
 
       {/* Mobile Search Overlay */}
-      {isMobileSearchOpen && (
-        <div className="md:hidden fixed inset-0 bg-card z-50 p-4">
-          <div className="flex items-center space-x-2 mb-4">
-            <button onClick={() => setIsMobileSearchOpen(false)} suppressHydrationWarning>
-              <X className="w-6 h-6" />
-            </button>
-            <form onSubmit={handleSearch} className="flex-1">
-              <Input
-                type="text"
-                placeholder="Search questions and answers"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full"
-                autoFocus
-                suppressHydrationWarning
-              />
-            </form>
+      {
+        isMobileSearchOpen && (
+          <div className="md:hidden fixed inset-0 bg-card z-50 p-4">
+            <div className="flex items-center space-x-2 mb-4">
+              <button onClick={() => setIsMobileSearchOpen(false)} suppressHydrationWarning>
+                <X className="w-6 h-6" />
+              </button>
+              <form onSubmit={handleSearch} className="flex-1">
+                <Input
+                  type="text"
+                  placeholder="Search questions and answers"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full"
+                  autoFocus
+                  suppressHydrationWarning
+                />
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Mobile Sidebar */}
-      {isMobileSidebarOpen && (
-        <div className="md:hidden fixed inset-0 z-40">
-          <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setIsMobileSidebarOpen(false)} />
-          <div ref={sidebarRef} className="fixed left-0 top-0 bottom-0 w-80 bg-card shadow-xl overflow-y-auto">
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold">Menu</h2>
-                <button onClick={() => setIsMobileSidebarOpen(false)} suppressHydrationWarning>
+      {
+        isMobileSidebarOpen && (
+          <div className="md:hidden fixed inset-0 z-40">
+            <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setIsMobileSidebarOpen(false)} />
+            <div ref={sidebarRef} className="fixed left-0 top-0 bottom-0 w-80 bg-card shadow-xl overflow-y-auto">
+              <div className="p-4">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-lg font-semibold">Menu</h2>
+                  <button onClick={() => setIsMobileSidebarOpen(false)} suppressHydrationWarning>
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+
+                {/* Navigation Links */}
+                <div className="space-y-2">
+                  <Link href="/" className="flex items-center px-4 py-3 rounded-lg hover:bg-gray-100" onClick={() => setIsMobileSidebarOpen(false)}>
+                    <Home className="w-5 h-5 mr-3" />
+                    <span>Home</span>
+                  </Link>
+
+                  <button
+                    className="categories-button w-full flex items-center px-4 py-3 rounded-lg hover:bg-gray-100"
+                    onClick={() => {
+                      setIsCategoriesDialogOpen(true);
+                      setIsMobileSidebarOpen(false);
+                    }}
+                    suppressHydrationWarning
+                  >
+                    <List className="w-5 h-5 mr-3" />
+                    <span>Categories</span>
+                  </button>
+
+                  <Link href="/ask" className="flex items-center px-4 py-3 rounded-lg hover:bg-gray-100" onClick={() => setIsMobileSidebarOpen(false)}>
+                    <PenTool className="w-5 h-5 mr-3" />
+                    <span>Ask Question</span>
+                  </Link>
+
+                  <Link href="/create-post" className="flex items-center px-4 py-3 rounded-lg hover:bg-gray-100" onClick={() => setIsMobileSidebarOpen(false)}>
+                    <Plus className="w-5 h-5 mr-3" />
+                    <span>Create Post</span>
+                  </Link>
+
+                  <Link href="/settings" className="flex items-center px-4 py-3 rounded-lg hover:bg-gray-100" onClick={() => setIsMobileSidebarOpen(false)}>
+                    <Users className="w-5 h-5 mr-3" />
+                    <span>Communities</span>
+                  </Link>
+
+                  <Link href="/notifications" className="flex items-center px-4 py-3 rounded-lg hover:bg-gray-100 relative" onClick={() => setIsMobileSidebarOpen(false)}>
+                    <Bell className="w-5 h-5 mr-3" />
+                    <span>Notifications</span>
+                    {unreadCount > 0 && (
+                      <span className="ml-auto bg-red-600 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-semibold">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    )}
+                  </Link>
+
+                  {user && (
+                    <>
+                      <div className="border-t border-gray-200 my-4"></div>
+                      <Link href={getUserProfileUrl()} className="flex items-center px-4 py-3 rounded-lg hover:bg-gray-100" onClick={() => setIsMobileSidebarOpen(false)}>
+                        <Image src={user.imageUrl || "/default-avatar.png"} alt="Profile" width={24} height={24} className="rounded-full mr-3" unoptimized />
+                        <span>Profile</span>
+                      </Link>
+                      <Link href="/bookmarks" className="flex items-center px-4 py-3 rounded-lg hover:bg-gray-100" onClick={() => setIsMobileSidebarOpen(false)}>
+                        <Bookmark className="w-5 h-5 mr-3" />
+                        <span>Bookmarks</span>
+                      </Link>
+                      <Link href="/settings" className="flex items-center px-4 py-3 rounded-lg hover:bg-gray-100" onClick={() => setIsMobileSidebarOpen(false)}>
+                        <Settings className="w-5 h-5 mr-3" />
+                        <span>Settings</span>
+                      </Link>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Categories Dialog */}
+      {
+        isCategoriesDialogOpen && (
+          <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4">
+            <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setIsCategoriesDialogOpen(false)} />
+            <div ref={categoriesDialogRef} className="relative bg-card rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+              <div className="sticky top-0 bg-card border-b border-border p-4 flex items-center justify-between">
+                <h2 className="text-xl font-semibold">Categories</h2>
+                <button onClick={() => setIsCategoriesDialogOpen(false)} suppressHydrationWarning>
                   <X className="w-6 h-6" />
                 </button>
               </div>
-
-              {/* Navigation Links */}
-              <div className="space-y-2">
-                <Link href="/" className="flex items-center px-4 py-3 rounded-lg hover:bg-gray-100" onClick={() => setIsMobileSidebarOpen(false)}>
-                  <Home className="w-5 h-5 mr-3" />
-                  <span>Home</span>
-                </Link>
-
-                <button
-                  className="categories-button w-full flex items-center px-4 py-3 rounded-lg hover:bg-gray-100"
-                  onClick={() => {
-                    setIsCategoriesDialogOpen(true);
-                    setIsMobileSidebarOpen(false);
-                  }}
-                  suppressHydrationWarning
-                >
-                  <List className="w-5 h-5 mr-3" />
-                  <span>Categories</span>
-                </button>
-
-                <Link href="/ask" className="flex items-center px-4 py-3 rounded-lg hover:bg-gray-100" onClick={() => setIsMobileSidebarOpen(false)}>
-                  <PenTool className="w-5 h-5 mr-3" />
-                  <span>Ask Question</span>
-                </Link>
-
-                <Link href="/create-post" className="flex items-center px-4 py-3 rounded-lg hover:bg-gray-100" onClick={() => setIsMobileSidebarOpen(false)}>
-                  <Plus className="w-5 h-5 mr-3" />
-                  <span>Create Post</span>
-                </Link>
-
-                <Link href="/settings" className="flex items-center px-4 py-3 rounded-lg hover:bg-gray-100" onClick={() => setIsMobileSidebarOpen(false)}>
-                  <Users className="w-5 h-5 mr-3" />
-                  <span>Communities</span>
-                </Link>
-
-                <Link href="/notifications" className="flex items-center px-4 py-3 rounded-lg hover:bg-gray-100 relative" onClick={() => setIsMobileSidebarOpen(false)}>
-                  <Bell className="w-5 h-5 mr-3" />
-                  <span>Notifications</span>
-                  {unreadCount > 0 && (
-                    <span className="ml-auto bg-red-600 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-semibold">
-                      {unreadCount > 99 ? '99+' : unreadCount}
-                    </span>
-                  )}
-                </Link>
-
-                {user && (
-                  <>
-                    <div className="border-t border-gray-200 my-4"></div>
-                    <Link href={getUserProfileUrl()} className="flex items-center px-4 py-3 rounded-lg hover:bg-gray-100" onClick={() => setIsMobileSidebarOpen(false)}>
-                      <Image src={user.imageUrl || "/default-avatar.png"} alt="Profile" width={24} height={24} className="rounded-full mr-3" unoptimized />
-                      <span>Profile</span>
+              <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {categoriesLoading ? (
+                  <div className="col-span-full text-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                    <p className="mt-2 text-gray-500">Loading categories...</p>
+                  </div>
+                ) : categories.length > 0 ? (
+                  categories.map((category) => (
+                    <Link
+                      key={category._id}
+                      href={`/categories/${category.slug}`}
+                      className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                      onClick={() => setIsCategoriesDialogOpen(false)}
+                    >
+                      <h3 className={`font-semibold ${category.color ? `text-${category.color}-600` : 'text-gray-900'}`}>
+                        {category.name}
+                      </h3>
+                      {category.description && (
+                        <p className="text-sm text-gray-500 mt-1 line-clamp-2">{category.description}</p>
+                      )}
                     </Link>
-                    <Link href="/bookmarks" className="flex items-center px-4 py-3 rounded-lg hover:bg-gray-100" onClick={() => setIsMobileSidebarOpen(false)}>
-                      <Bookmark className="w-5 h-5 mr-3" />
-                      <span>Bookmarks</span>
-                    </Link>
-                    <Link href="/settings" className="flex items-center px-4 py-3 rounded-lg hover:bg-gray-100" onClick={() => setIsMobileSidebarOpen(false)}>
-                      <Settings className="w-5 h-5 mr-3" />
-                      <span>Settings</span>
-                    </Link>
-                  </>
+                  ))
+                ) : (
+                  <div className="col-span-full text-center py-8">
+                    <p className="text-gray-500">No categories found.</p>
+                  </div>
                 )}
               </div>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Categories Dialog */}
-      {isCategoriesDialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4">
-          <div className="fixed inset-0 bg-black bg-opacity-50" onClick={() => setIsCategoriesDialogOpen(false)} />
-          <div ref={categoriesDialogRef} className="relative bg-card rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="sticky top-0 bg-card border-b border-border p-4 flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Categories</h2>
-              <button onClick={() => setIsCategoriesDialogOpen(false)} suppressHydrationWarning>
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {categoriesLoading ? (
-                <div className="col-span-full text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                  <p className="mt-2 text-gray-500">Loading categories...</p>
-                </div>
-              ) : categories.length > 0 ? (
-                categories.map((category) => (
-                  <Link
-                    key={category._id}
-                    href={`/categories/${category.slug}`}
-                    className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                    onClick={() => setIsCategoriesDialogOpen(false)}
-                  >
-                    <h3 className={`font-semibold ${category.color ? `text-${category.color}-600` : 'text-gray-900'}`}>
-                      {category.name}
-                    </h3>
-                    {category.description && (
-                      <p className="text-sm text-gray-500 mt-1 line-clamp-2">{category.description}</p>
-                    )}
-                  </Link>
-                ))
-              ) : (
-                <div className="col-span-full text-center py-8">
-                  <p className="text-gray-500">No categories found.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Notification Toast */}
-      {toastNotification && (
-        <NotificationToast
-          notification={toastNotification}
-          onClose={() => setToastNotification(null)}
-        />
-      )}
+      {
+        toastNotification && (
+          <NotificationToast
+            notification={toastNotification}
+            onClose={() => setToastNotification(null)}
+          />
+        )
+      }
     </>
   );
 }

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import RichTextEditor from "@/components/RichTextEditor";
-import { ArrowLeft, Hash, HelpCircle, Plus } from "lucide-react";
+import { ArrowLeft, Hash, HelpCircle, Plus, Sparkles } from "lucide-react";
 import Link from "next/link";
 import SignInPrompt from "@/components/SignInPrompt";
 import toast from "react-hot-toast";
@@ -35,9 +35,11 @@ function AskQuestionPageContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [categories, setCategories] = useState<Category[]>([]);
+  const [isAnonymous, setIsAnonymous] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [existingTags, setExistingTags] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isGeneratingTags, setIsGeneratingTags] = useState(false);
 
 
   // All hooks must be called before any conditional returns
@@ -54,12 +56,14 @@ function AskQuestionPageContent() {
   useEffect(() => {
     // Fetch categories
     fetchCategories();
-    fetchTags();
   }, []);
 
-  const fetchTags = async () => {
+  const fetchTags = async (query?: string) => {
     try {
-      const response = await fetch("/api/tags");
+      const url = query
+        ? `/api/tags?q=${encodeURIComponent(query)}`
+        : "/api/tags";
+      const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
         setExistingTags(data.tags || []);
@@ -68,6 +72,13 @@ function AskQuestionPageContent() {
       console.error("Error fetching tags:", error);
     }
   };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchTags(tagInput);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [tagInput]);
 
   const fetchCategories = async () => {
     try {
@@ -118,6 +129,35 @@ function AskQuestionPageContent() {
     setTags(tags.filter((tag) => tag !== tagToRemove));
   };
 
+  const generateTags = async () => {
+    if (!title && !description) {
+      toast.error("Please enter a title or details to generate tags.");
+      return;
+    }
+
+    setIsGeneratingTags(true);
+    try {
+      const response = await fetch("/api/ai/suggest-tags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, content: description }),
+      });
+
+      const data = await response.json();
+      if (data.tags && Array.isArray(data.tags)) {
+        // Merge with existing unique tags, max 5, but let's allow more if AI suggests
+        const newTags = [...new Set([...tags, ...data.tags])].slice(0, 7);
+        setTags(newTags);
+        toast.success("Tags generated!");
+      }
+    } catch (error) {
+      console.error("Error generating tags:", error);
+      toast.error("Failed to generate tags");
+    } finally {
+      setIsGeneratingTags(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return setError("You must be logged in to ask a question");
@@ -145,6 +185,7 @@ function AskQuestionPageContent() {
           userEmail: user.primaryEmailAddress?.emailAddress,
           userFullName: user.fullName,
           userImageUrl: user.imageUrl,
+          isAnonymous: isAnonymous
         }),
       });
 
@@ -257,19 +298,35 @@ function AskQuestionPageContent() {
                 Add tags (optional)
               </Label>
               <div className="mt-2">
-                <Input
-                  id="tags"
-                  placeholder="Type a tag and press Enter"
-                  value={tagInput}
-                  onChange={(e) => {
-                    setTagInput(e.target.value);
-                    setShowSuggestions(true);
-                  }}
-                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} // Delay to allow click
-                  onFocus={() => setShowSuggestions(true)}
-                  onKeyDown={handleAddTag}
-                  maxLength={20}
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="tags"
+                    placeholder="Type a tag and press Enter"
+                    value={tagInput}
+                    onChange={(e) => {
+                      setTagInput(e.target.value);
+                      setShowSuggestions(true);
+                    }}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} // Delay to allow click
+                    onFocus={() => setShowSuggestions(true)}
+                    onKeyDown={handleAddTag}
+                    maxLength={20}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    onClick={generateTags}
+                    disabled={isGeneratingTags}
+                    className="bg-purple-100 text-purple-700 hover:bg-purple-200 border-purple-200"
+                  >
+                    {isGeneratingTags ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-700 mr-2"></div>
+                    ) : (
+                      <Sparkles className="w-4 h-4 mr-2" />
+                    )}
+                    AI Suggest
+                  </Button>
+                </div>
                 <p className="text-sm text-gray-500 mt-1">
                   Press Enter to add tags. Maximum 5 tags.
                 </p>
@@ -320,6 +377,20 @@ function AskQuestionPageContent() {
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Anonymous Toggle */}
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="isAnonymous"
+                checked={isAnonymous}
+                onChange={(e) => setIsAnonymous(e.target.checked)}
+                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <label htmlFor="isAnonymous" className="text-sm text-gray-700 select-none">
+                Ask anonymously (your name will be hidden)
+              </label>
             </div>
 
             {/* Form Actions */}

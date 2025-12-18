@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { adminClient } from "@/sanity/lib/adminClient";
+import { supabaseAdmin as supabase } from "@/lib/supabase";
 
 export async function POST(request: Request) {
     try {
@@ -13,33 +13,37 @@ export async function POST(request: Request) {
             );
         }
 
-        // Since we don't have the Sanity User ID directly from Clerk ID in all cases,
-        // we should fetch the user first.
-        const user = await adminClient.fetch(
-            `*[_type == "user" && clerkId == $userId][0]`,
-            { userId }
-        );
+        // Get User
+        const { data: user } = await supabase
+            .from('users')
+            .select('id')
+            .eq('clerk_id', userId)
+            .single();
 
-        // If user not found by clerkId, maybe userId IS the sanity ID (fallback)
-        const sanityUserId = user ? user._id : userId;
+        if (!user) {
+            return NextResponse.json({ error: "User not found" }, { status: 404 });
+        }
 
         if (action === "add") {
-            await adminClient
-                .patch(sanityUserId)
-                .setIfMissing({ bookmarks: [] })
-                .append("bookmarks", [
-                    {
-                        _type: "reference",
-                        _ref: questionId,
-                        _key: questionId, // Use questionId as key to prevent duplicates if possible, or generate unique key
-                    },
-                ])
-                .commit();
+            const { error } = await supabase
+                .from('bookmarks')
+                .insert({
+                    user_id: user.id,
+                    question_id: questionId
+                });
+
+            // Ignore uniqueness violation (already bookmarked)
+            if (error && error.code !== '23505') {
+                throw error;
+            }
         } else if (action === "remove") {
-            await adminClient
-                .patch(sanityUserId)
-                .unset([`bookmarks[_ref=="${questionId}"]`])
-                .commit();
+            const { error } = await supabase
+                .from('bookmarks')
+                .delete()
+                .eq('user_id', user.id)
+                .eq('question_id', questionId);
+
+            if (error) throw error;
         }
 
         return NextResponse.json({ success: true });
@@ -61,23 +65,23 @@ export async function GET(request: Request) {
             return NextResponse.json({ bookmarks: [] });
         }
 
-        const user = await adminClient.fetch(
-            `*[_type == "user" && clerkId == $userId][0]{ bookmarks }`,
-            { userId }
-        );
+        const { data: user } = await supabase
+            .from('users')
+            .select('id')
+            .eq('clerk_id', userId)
+            .single();
 
-        // If user not found by clerkId, try fetching by _id directly
-        let bookmarks = user?.bookmarks || [];
         if (!user) {
-            const userById = await adminClient.fetch(
-                `*[_type == "user" && _id == $userId][0]{ bookmarks }`,
-                { userId }
-            );
-            bookmarks = userById?.bookmarks || [];
+            return NextResponse.json({ bookmarks: [] });
         }
 
+        const { data: bookmarks } = await supabase
+            .from('bookmarks')
+            .select('question_id')
+            .eq('user_id', user.id);
+
         return NextResponse.json({
-            bookmarks: bookmarks.map((b: any) => b._ref)
+            bookmarks: bookmarks?.map((b: any) => b.question_id) || []
         });
     } catch (error) {
         console.error("Error fetching bookmarks:", error);

@@ -353,7 +353,7 @@ export default function QuestionCard({ question }: QuestionCardProps) {
           dangerouslySetInnerHTML={{
             __html: question.description.replace(
               /#(\w+)/g,
-              '<a href="/search?q=$1" class="text-blue-600 hover:underline" onClick="event.stopPropagation()">#$1</a>'
+              '<a href="/search?q=%23$1" class="text-blue-600 hover:underline" onClick="event.stopPropagation()">#$1</a>'
             )
           }}
         />
@@ -365,7 +365,7 @@ export default function QuestionCard({ question }: QuestionCardProps) {
           {question.tags.map((tag, index) => (
             <Link
               key={index}
-              href={`/search?q=${tag}`}
+              href={`/search?q=%23${tag}`}
               className="px-2 py-1 bg-blue-50 text-blue-600 text-xs sm:text-sm rounded-full hover:bg-blue-100 transition-colors"
               onClick={(e) => e.stopPropagation()}
             >

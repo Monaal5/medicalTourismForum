@@ -1,50 +1,11 @@
-import { sanityFetch } from "@/sanity/lib/live";
-import { defineQuery } from "groq";
 import Link from "next/link";
 import PostContent from "@/components/PostContent";
+import { getPostById } from "@/lib/db/queries";
 
 export const revalidate = 0; // Disable caching
 export const dynamic = 'force-dynamic'; // Always fetch fresh data
 
-interface PostWithDetails {
-  _id: string;
-  postTitle: string;
-  body?: any[];
-  image?: any;
-  publishedAt: string;
-  author: {
-    username: string;
-    imageUrl: string;
-    clerkId?: string;
-  };
-  subreddit?: {
-    title: string;
-    slug: {
-      current: string;
-    };
-  };
-  category?: {
-    name: string;
-    slug: {
-      current: string;
-    };
-  };
-  commentCount?: number;
-}
-
-interface CommentWithDetails {
-  _id: string;
-  comment: string;
-  createdAt: string;
-  author: {
-    username: string;
-    imageUrl: string;
-    clerkId?: string;
-  };
-  voteCount?: number;
-  userVote?: "upvote" | "downvote" | null;
-  replies?: CommentWithDetails[];
-}
+// ... Interfaces ...
 
 interface PostPageProps {
   params: Promise<{
@@ -54,98 +15,36 @@ interface PostPageProps {
 
 export default async function PostPage({ params }: PostPageProps) {
   const { id } = await params;
-  let post: PostWithDetails | null = null;
-  let comments: CommentWithDetails[] = [];
+  let post: any | null = null;
+  let comments: any[] = [];
   let loading = false;
 
   try {
-    // Fetch post details
-    // Fetch post details
-    const postQuery = defineQuery(`
-      *[_type == "post" && _id == $id && !isDeleted][0] {
-        _id,
-        postTitle,
-        body,
-        image,
-        contentGallery[]{
-          _type,
-          asset->{
-            url
-          },
-          alt,
-          title
-        },
-        publishedAt,
-        author->{
-          username,
-          imageUrl,
-          clerkId
-        },
-        subreddit->{
-          title,
-          slug
-        },
-        category->{
-          name,
-          slug,
-          icon
-        }
-      }
-    `);
+    const postData = await getPostById(id);
 
-    const postResult = await sanityFetch({
-      query: postQuery,
-      params: { id },
-    });
+    if (postData) {
+      // Separate comments from post
+      const { comments: rawComments, ...restPost } = postData;
+      post = restPost;
 
-    if (postResult.data) {
-      const rawPost = postResult.data as any;
-      post = rawPost;
-    }
-
-    // Fetch comments with nested replies
-    // Fetch all comments for the post (flat list)
-    const commentsQuery = defineQuery(`
-      *[_type == "comment" && post._ref == $id && !isDeleted] | order(createdAt asc) {
-        _id,
-        comment,
-        createdAt,
-        author->{
-          username,
-          imageUrl,
-          clerkId
-        },
-        parentComment
-      }
-    `);
-
-    const commentsResult = await sanityFetch({
-      query: commentsQuery,
-      params: { id },
-    });
-
-    if (commentsResult.data) {
-      const allComments = commentsResult.data as any[];
-
-      // Build comment tree
+      // Build comment tree (assuming rawComments is flat)
       const commentMap = new Map();
-      const rootComments: CommentWithDetails[] = [];
+      const rootComments: any[] = [];
 
       // First pass: create map of all comments
-      allComments.forEach(comment => {
+      rawComments.forEach((comment: any) => {
         comment.replies = [];
         commentMap.set(comment._id, comment);
       });
 
       // Second pass: link children to parents
-      allComments.forEach(comment => {
-        if (comment.parentComment?._ref) {
-          const parent = commentMap.get(comment.parentComment._ref);
+      rawComments.forEach((comment: any) => {
+        if (comment.parentComment?._ref || comment.parent_comment_id) { // Handle both just in case
+          const parentId = comment.parentComment?._ref || comment.parent_comment_id;
+          const parent = commentMap.get(parentId);
           if (parent) {
             parent.replies.push(comment);
           } else {
-            // Parent might be deleted or not found, treat as root or orphan
-            // For now, let's treat as root if parent is missing to avoid data loss
             rootComments.push(comment);
           }
         } else {
@@ -154,16 +53,10 @@ export default async function PostPage({ params }: PostPageProps) {
       });
 
       comments = rootComments;
-
-      console.log('=== COMMENTS DEBUG ===');
-      console.log('Total comments fetched:', allComments.length);
-      console.log('Root comments:', comments.length);
-    } else {
-      console.log('No comments found for post:', id);
     }
+
   } catch (error) {
     console.error("Error fetching post data:", error);
-    console.error('Post ID:', id);
     loading = true;
   }
 

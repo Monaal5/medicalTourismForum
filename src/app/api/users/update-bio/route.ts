@@ -1,45 +1,30 @@
-import { NextResponse } from "next/server";
-import { adminClient } from "@/sanity/lib/adminClient";
+
+import { NextRequest, NextResponse } from "next/server";
+import { supabaseAdmin as supabase } from "@/lib/supabase";
 import { auth } from "@clerk/nextjs/server";
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
     try {
-        const body = await request.json();
-        const { bio } = body;
-
-        const { userId: clerkUserId } = await auth();
-
-        if (!clerkUserId) {
-            return NextResponse.json(
-                { error: "Not authenticated" },
-                { status: 401 }
-            );
+        const { userId } = await auth();
+        if (!userId) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        // Find current user in Sanity by Clerk ID
-        const currentUser = await adminClient.fetch(
-            `*[_type == "user" && clerkId == $userId][0]`,
-            { userId: clerkUserId }
-        );
+        const { bio } = await request.json();
 
-        if (!currentUser) {
-            return NextResponse.json(
-                { error: "User not found" },
-                { status: 404 }
-            );
+        const { error } = await supabase
+            .from('users')
+            .update({ bio })
+            .eq('clerk_id', userId);
+
+        if (error) {
+            console.error("Error updating bio:", error);
+            throw error;
         }
 
-        await adminClient
-            .patch(currentUser._id)
-            .set({ bio: bio })
-            .commit();
-
-        return NextResponse.json({ success: true, bio });
-    } catch (error) {
-        console.error("Error updating bio:", error);
-        return NextResponse.json(
-            { error: "Failed to update bio" },
-            { status: 500 }
-        );
+        return NextResponse.json({ success: true });
+    } catch (error: any) {
+        console.error("Bio update error:", error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

@@ -1,7 +1,6 @@
 import React from "react";
-import { sanityFetch } from "@/sanity/lib/live";
-import { defineQuery } from "groq";
 import QuestionDetailPage from "@/components/QuestionDetailPage";
+import { getQuestionById } from "@/lib/db/queries";
 
 export const revalidate = 0; // Disable caching for this page
 export const dynamic = 'force-dynamic'; // Always fetch fresh data
@@ -15,52 +14,6 @@ interface QuestionPageProps {
   }>;
 }
 
-const questionQuery = defineQuery(`
-  *[_type == "question" && _id == $id && !isDeleted][0] {
-    _id,
-    title,
-    description,
-    author->{
-      _id,
-      username,
-      imageUrl,
-      bio,
-      clerkId
-    },
-    category->{
-      name,
-      color,
-      slug
-    },
-    tags,
-    createdAt,
-    updatedAt,
-    "answerCount": count(*[_type == "answer" && references(^._id) && !isDeleted]),
-    "viewCount": 0,
-    "followerCount": 0,
-    "isFollowing": false,
-    "isBookmarked": false,
-    "answers": *[_type == "answer" && references(^._id) && !isDeleted] | order(createdAt desc) {
-      _id,
-      content,
-      author->{
-        _id,
-        username,
-        imageUrl,
-        bio,
-        clerkId
-      },
-      createdAt,
-      updatedAt,
-      "voteCount": coalesce(count(votes[].voteType == "upvote") - count(votes[].voteType == "downvote"), 0),
-      "userVote": null,
-      "isAccepted": false,
-      "commentCount": 0,
-      "comments": []
-    }
-  }
-`);
-
 export default async function QuestionPage({
   params,
   searchParams,
@@ -69,14 +22,19 @@ export default async function QuestionPage({
   const { answer } = await searchParams;
   const shouldAutoFocusAnswer = answer === "true";
 
-  let question = null;
+  let question: any | null = null;
 
   try {
-    const result = await sanityFetch({
-      query: questionQuery,
-      params: { id: questionId },
-    });
-    question = result.data;
+    question = await getQuestionById(questionId);
+
+    // Adapting fields if necessary to match component expectations
+    if (question) {
+      question.answerCount = question.answers?.length || 0;
+      // Ensure answers is an array
+      question.answers = question.answers || [];
+      // Maps fields if missing (Supabase mapQuestion handles most)
+    }
+
   } catch (error) {
     console.error("Error fetching question:", error);
   }

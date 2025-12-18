@@ -228,7 +228,7 @@ export default function PostCard({ post }: PostCardProps) {
                 {post.author.username}
               </Link>
               <div className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm text-gray-500">
-                <span className="truncate">
+                <span className="truncate" suppressHydrationWarning>
                   {formatDistanceToNow(new Date(post.publishedAt), {
                     addSuffix: true,
                   })}
@@ -297,15 +297,22 @@ export default function PostCard({ post }: PostCardProps) {
         </Link>
 
         {/* Post Body - Caption */}
+        {/* Post Body - Caption */}
         {post.body && (
           <div className="text-gray-700 text-sm sm:text-base mb-3 line-clamp-2 sm:line-clamp-3">
-            {post.body.map((block: any, index: number) => (
-              <p key={index} className="mb-1">
-                {block.children
-                  ?.map((child: any, childIndex: number) => child.text)
-                  .join("")}
-              </p>
-            ))}
+            {Array.isArray(post.body) ? (
+              post.body.map((block: any, index: number) => (
+                <p key={index} className="mb-1">
+                  {block.children
+                    ?.map((child: any, childIndex: number) => child.text)
+                    .join("")}
+                </p>
+              ))
+            ) : typeof post.body === 'string' ? (
+              <p>{post.body}</p>
+            ) : (post.body as any).content ? (
+              <p>{(post.body as any).content}</p>
+            ) : null}
           </div>
         )}
       </div>
@@ -317,7 +324,7 @@ export default function PostCard({ post }: PostCardProps) {
             {post.tags.map((tag, index) => (
               <Link
                 key={index}
-                href={`/search?q=${tag}`}
+                href={`/search?q=%23${tag}`}
                 className="px-2 py-1 bg-blue-50 text-blue-600 text-xs sm:text-sm rounded-full hover:bg-blue-100 cursor-pointer transition-colors"
                 onClick={(e) => e.stopPropagation()}
               >
@@ -362,6 +369,7 @@ export default function PostCard({ post }: PostCardProps) {
                 <button
                   onClick={handlePrevSlide}
                   className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-1.5 rounded-full hover:bg-black/70 transition-colors z-10"
+                  suppressHydrationWarning
                 >
                   <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
@@ -370,6 +378,7 @@ export default function PostCard({ post }: PostCardProps) {
                 <button
                   onClick={handleNextSlide}
                   className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white p-1.5 rounded-full hover:bg-black/70 transition-colors z-10"
+                  suppressHydrationWarning
                 >
                   <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>

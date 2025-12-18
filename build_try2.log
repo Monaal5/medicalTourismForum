@@ -1,0 +1,26 @@
+
+> medical-forum@0.1.0 build
+> next build
+
+   ▲ Next.js 16.0.7 (Turbopack)
+   - Environments: .env.local
+   - Experiments (use with caution):
+     · optimizePackageImports
+
+ ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 26.6s
+   Running TypeScript ...
+Failed to compile.
+
+./src/app/api/posts/[postId]/route.ts:30:34
+Type error: Property 'clerk_id' does not exist on type '{ clerk_id: any; }[]'.
+
+[0m [90m 28 |[39m
+ [90m 29 |[39m     [90m// 2. Check Ownership[39m
+[31m[1m>[22m[39m[90m 30 |[39m     [36mconst[39m isOwner [33m=[39m post[33m.[39mauthor[33m?[39m[33m.[39mclerk_id [33m===[39m user[33m.[39mid[33m;[39m
+ [90m    |[39m                                  [31m[1m^[22m[39m
+ [90m 31 |[39m     [36mconst[39m isAdmin [33m=[39m user[33m.[39memailAddresses[[35m0[39m][33m?[39m[33m.[39memailAddress [33m===[39m [32m'monaalmamen@gmail.com'[39m[33m;[39m
+ [90m 32 |[39m
+ [90m 33 |[39m     [36mif[39m ([33m![39misOwner [33m&&[39m [33m![39misAdmin) {[0m
+Next.js build worker exited with code: 1 and signal: null

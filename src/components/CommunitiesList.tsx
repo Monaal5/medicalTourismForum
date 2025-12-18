@@ -75,7 +75,7 @@ export default function CommunitiesList() {
             {communities.map((community) => (
               <SidebarMenuSubItem key={community._id}>
                 <SidebarMenuSubButton asChild>
-                  <Link href={`/community/${community.slug.current}`}>
+                  <Link href={`/communities/${community.slug.current}`}>
                     c/{community.title}
                   </Link>
                 </SidebarMenuSubButton>

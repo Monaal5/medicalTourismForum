@@ -1,23 +1,18 @@
+
 import { NextRequest, NextResponse } from "next/server";
-import { adminClient } from "@/sanity/lib/adminClient";
-import { addUser } from "@/sanity/lib/user/addUser";
-import { defineQuery } from "groq";
-import { sanityFetch } from "@/sanity/lib/live";
-import { generateUsername } from "@/lib/username";
+import { supabaseAdmin as supabase } from "@/lib/supabase";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const {
       targetId,
-      targetType, // 'post' or 'comment'
+      targetType, // 'post', 'comment', 'answer'
       voteType, // 'upvote' or 'downvote'
       userId,
-      userEmail,
-      userFullName,
-      userImageUrl,
     } = body;
 
+    // Supabase needs only userId, targetId, voteType
     if (!targetId || !targetType || !voteType || !userId) {
       return NextResponse.json(
         { error: "Missing required fields" },
@@ -25,68 +20,99 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Ensure user exists in Sanity
-    // First, check if user already exists by Clerk ID
-    let sanityUser = await adminClient.fetch(
-      `*[_type == "user" && clerkId == $clerkId][0]`,
-      { clerkId: userId }
-    );
+    // 1. Get User
+    const { data: user } = await supabase.from('users').select('id').eq('clerk_id', userId).single();
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-    if (!sanityUser) {
-      // User doesn't exist, create new one
-      sanityUser = await addUser({
-        id: userId,
-        username: generateUsername(userFullName || "User", userId),
-        email: userEmail || "user@example.com",
-        imageUrl: userImageUrl || "",
-      });
+    // 2. Check Existing Vote
+    // We used a polymorphic 'votes' table structure in SQL: item_type, item_id
+    // But previously defined multiple queries. In Supabase we use one table.
+
+    // item_type mapping: 'post', 'comment', 'answer'
+    // Ensure targetType matches allowed set.
+
+    // Check if vote exists
+    const { data: existingVote } = await supabase
+      .from('votes')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('item_type', targetType)
+      .eq('item_id', targetId)
+      .single();
+
+
+    // Helper to update reputation and award badges
+    const updateReputation = async (targetUserId: string, change: number) => {
+      // Check if user is voting on their own content? (Optionally prevent self-reputation)
+      if (targetUserId === user.id) return;
+
+      const { data: targetUser } = await supabase.from('users').select('reputation').eq('id', targetUserId).single();
+      const currentRep = targetUser?.reputation || 0;
+      const newRep = currentRep + change;
+
+      await supabase.from('users').update({ reputation: newRep }).eq('id', targetUserId);
+
+      // Check Badges
+      const milestones = [
+        { score: 50, name: 'Rising Star' },
+        { score: 100, name: 'Top Contributor' },
+        { score: 500, name: 'Expert' }
+      ];
+
+      for (const m of milestones) {
+        if (newRep >= m.score && currentRep < m.score) {
+          // Award Badge
+          const { data: badge } = await supabase.from('badges').select('id').eq('name', m.name).single();
+          if (badge) {
+            await supabase.from('user_badges').upsert(
+              { user_id: targetUserId, badge_id: badge.id },
+              { onConflict: 'user_id, badge_id', ignoreDuplicates: true }
+            );
+          }
+        }
+      }
+    };
+
+    // Get Target Author ID
+    let table = '';
+    if (targetType === 'post') table = 'posts';
+    else if (targetType === 'question') table = 'questions';
+    else if (targetType === 'answer') table = 'answers';
+    else if (targetType === 'comment') table = 'comments';
+
+    let targetAuthorId = null;
+    if (table) {
+      const { data: item } = await supabase.from(table).select('author_id').eq('id', targetId).single();
+      if (item) targetAuthorId = item.author_id;
     }
 
-    // Define static queries for type safety
-    const postVoteQuery = defineQuery(`
-      *[_type == "vote" && user._ref == $userId && post._ref == $targetId][0] {
-        _id,
-        voteType
-      }
-    `);
+    if (existingVote) {
+      if (existingVote.vote_type === voteType) {
+        // Remove vote
+        await supabase.from('votes').delete().eq('id', existingVote.id);
 
-    const commentVoteQuery = defineQuery(`
-      *[_type == "vote" && user._ref == $userId && comment._ref == $targetId][0] {
-        _id,
-        voteType
-      }
-    `);
+        // Revert reputation
+        if (targetAuthorId) {
+          const points = voteType === 'upvote' ? -5 : 2; // Revert: Up was +5, so -5. Down was -2, so +2.
+          await updateReputation(targetAuthorId, points);
+        }
 
-    // Choose the correct query based on targetType
-    let existingVote;
-    if (targetType === 'post') {
-      existingVote = await sanityFetch({
-        query: postVoteQuery,
-        params: { userId: sanityUser._id, targetId },
-      });
-    } else {
-      existingVote = await sanityFetch({
-        query: commentVoteQuery,
-        params: { userId: sanityUser._id, targetId },
-      });
-    }
-
-    if (existingVote.data) {
-      // User already voted, update or remove vote
-      if (existingVote.data.voteType === voteType) {
-        // Same vote type, remove the vote
-        await adminClient.delete(existingVote.data._id);
         return NextResponse.json({
           success: true,
           action: "removed",
           voteType: null,
         });
       } else {
-        // Different vote type, update the vote
-        await adminClient
-          .patch(existingVote.data._id)
-          .set({ voteType })
-          .commit();
+        // Change vote (e.g. Up to Down)
+        await supabase.from('votes').update({ vote_type: voteType }).eq('id', existingVote.id);
+
+        if (targetAuthorId) {
+          // Revert old effect and apply new effect
+          // If old was Up (+5), new is Down (-2) -> Change is -7
+          // If old was Down (-2), new is Up (+5) -> Change is +7
+          const points = voteType === 'upvote' ? 7 : -7;
+          await updateReputation(targetAuthorId, points);
+        }
 
         return NextResponse.json({
           success: true,
@@ -95,30 +121,18 @@ export async function POST(request: NextRequest) {
         });
       }
     } else {
-      // New vote, create it
-      const voteData: any = {
-        _type: "vote",
-        user: {
-          _type: "reference",
-          _ref: sanityUser._id,
-        },
-        voteType,
-        createdAt: new Date().toISOString(),
-      };
+      // Create new vote
+      await supabase.from('votes').insert({
+        user_id: user.id,
+        item_type: targetType,
+        item_id: targetId,
+        vote_type: voteType
+      });
 
-      if (targetType === "post") {
-        voteData.post = {
-          _type: "reference",
-          _ref: targetId,
-        };
-      } else if (targetType === "comment") {
-        voteData.comment = {
-          _type: "reference",
-          _ref: targetId,
-        };
+      if (targetAuthorId) {
+        const points = voteType === 'upvote' ? 5 : -2;
+        await updateReputation(targetAuthorId, points);
       }
-
-      const newVote = await adminClient.create(voteData);
 
       return NextResponse.json({
         success: true,
@@ -126,6 +140,7 @@ export async function POST(request: NextRequest) {
         voteType,
       });
     }
+
   } catch (error) {
     console.error("Error handling vote:", error);
     return NextResponse.json(
@@ -139,7 +154,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const targetId = searchParams.get("targetId");
-    const targetType = searchParams.get("targetType");
+    const targetType = searchParams.get("targetType"); // 'post', 'question', 'answer', 'comment'
     const userId = searchParams.get("userId");
 
     if (!targetId || !targetType || !userId) {
@@ -149,66 +164,29 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const postVoteStatsQuery = defineQuery(`
-      {
-        "votes": *[_type == "vote" && post._ref == $targetId] {
-          voteType
-        },
-        "userVote": *[_type == "vote" && user._ref == $userId && post._ref == $targetId][0] {
-          voteType
-        }
-      }
-    `);
+    const { data: user } = await supabase.from('users').select('id').eq('clerk_id', userId).single();
 
-    const commentVoteStatsQuery = defineQuery(`
-      {
-        "votes": *[_type == "vote" && comment._ref == $targetId] {
-          voteType
-        },
-        "userVote": *[_type == "vote" && user._ref == $userId && comment._ref == $targetId][0] {
-          voteType
-        }
-      }
-    `);
+    // Get all votes for this item
+    const { data: votes } = await supabase
+      .from('votes')
+      .select('vote_type, user_id')
+      .eq('item_type', targetType)
+      .eq('item_id', targetId);
 
-    let result;
-    if (targetType === 'post') {
-      result = await sanityFetch({
-        query: postVoteStatsQuery,
-        params: { targetId, userId },
-      });
-    } else {
-      result = await sanityFetch({
-        query: commentVoteStatsQuery,
-        params: { targetId, userId },
-      });
-    }
+    const upvotes = (votes || []).filter((v: any) => v.vote_type === 'upvote').length;
+    const downvotes = (votes || []).filter((v: any) => v.vote_type === 'downvote').length;
+    const voteCount = upvotes - downvotes;
 
-    if (result.data) {
-      const votes = result.data.votes || [];
-      const upvotes = votes.filter(
-        (vote: any) => vote.voteType === "upvote",
-      ).length;
-      const downvotes = votes.filter(
-        (vote: any) => vote.voteType === "downvote",
-      ).length;
-      const voteCount = upvotes - downvotes;
-      const userVote = result.data.userVote?.voteType || null;
-
-      return NextResponse.json({
-        voteCount,
-        userVote,
-        upvotes,
-        downvotes,
-      });
-    }
+    const userVoteObj = user ? (votes || []).find((v: any) => v.user_id === user.id) : null;
+    const userVote = userVoteObj ? userVoteObj.vote_type : null;
 
     return NextResponse.json({
-      voteCount: 0,
-      userVote: null,
-      upvotes: 0,
-      downvotes: 0,
+      voteCount,
+      userVote,
+      upvotes,
+      downvotes,
     });
+
   } catch (error) {
     console.error("Error fetching votes:", error);
     return NextResponse.json(

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import RichTextEditor from "@/components/RichTextEditor";
-import { ArrowLeft, HelpCircle, Image as ImageIcon, Video, X, PlusCircle } from "lucide-react";
+import { ArrowLeft, HelpCircle, Image as ImageIcon, Video, X, PlusCircle, Hash, Sparkles } from "lucide-react";
 import Link from "next/link";
 import SignInPrompt from "@/components/SignInPrompt";
 
@@ -37,6 +37,66 @@ function NewPostPageContent() {
         preview: string;
         type: 'image' | 'video';
     }>>([]);
+    const [tags, setTags] = useState<string[]>([]);
+    const [tagInput, setTagInput] = useState("");
+    const [existingTags, setExistingTags] = useState<string[]>([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
+    const [isGeneratingTags, setIsGeneratingTags] = useState(false);
+
+    const generateDescription = async () => {
+        if (!title.trim()) {
+            setError("Please enter a title first to generate a description.");
+            return;
+        }
+        setIsGeneratingDescription(true);
+        try {
+            const response = await fetch("/api/ai/suggest-description", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title, currentBody: description }),
+            });
+            const data = await response.json();
+            if (data.suggestion) {
+                setDescription(data.suggestion);
+            } else if (data.error) {
+                setError(data.error);
+            }
+        } catch (error) {
+            console.error("Error generating description:", error);
+            setError("Failed to generate description.");
+        } finally {
+            setIsGeneratingDescription(false);
+        }
+    };
+
+    const generateTags = async () => {
+        if (!title.trim() && !description.trim()) {
+            setError("Please enter a title or description to generate tags.");
+            return;
+        }
+        setIsGeneratingTags(true);
+        try {
+            const response = await fetch("/api/ai/suggest-tags", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title, content: description }),
+            });
+            const data = await response.json();
+            if (data.tags && Array.isArray(data.tags)) {
+                // Merge distinct tags
+                const newTags = [...new Set([...tags, ...data.tags])].slice(0, 5);
+                setTags(newTags);
+            } else if (data.error) {
+                setError(data.error);
+            }
+        } catch (error) {
+            console.error("Error generating tags:", error);
+            setError("Failed to generate tags.");
+        } finally {
+            setIsGeneratingTags(false);
+        }
+    };
 
     useEffect(() => {
         const categoryParam = searchParams.get("category");
@@ -61,6 +121,42 @@ function NewPostPageContent() {
         } catch (error) {
             console.error("Error fetching categories:", error);
         }
+    };
+
+    const fetchTags = async (query?: string) => {
+        try {
+            const url = query
+                ? `/api/tags?q=${encodeURIComponent(query)}`
+                : "/api/tags";
+            const response = await fetch(url);
+            if (response.ok) {
+                const data = await response.json();
+                setExistingTags(data.tags || []);
+            }
+        } catch (error) {
+            console.error("Error fetching tags:", error);
+        }
+    };
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            fetchTags(tagInput);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [tagInput]);
+
+    const handleAddTag = (e: React.KeyboardEvent) => {
+        if (e.key === "Enter" && tagInput.trim()) {
+            e.preventDefault();
+            if (!tags.includes(tagInput.trim()) && tags.length < 5) {
+                setTags([...tags, tagInput.trim()]);
+                setTagInput("");
+            }
+        }
+    };
+
+    const handleRemoveTag = (tagToRemove: string) => {
+        setTags(tags.filter((tag) => tag !== tagToRemove));
     };
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -122,6 +218,47 @@ function NewPostPageContent() {
         setError("");
 
         try {
+            // 1. Upload Media Files First
+            const uploadedMedia = [];
+
+            for (const media of mediaFiles) {
+                // Get Signed URL
+                const signRes = await fetch("/api/upload/sign", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        filename: media.file.name,
+                        contentType: media.file.type
+                    })
+                });
+
+                if (!signRes.ok) {
+                    throw new Error(`Failed to get upload URL for ${media.file.name}`);
+                }
+
+                const { signedUrl, publicUrl } = await signRes.json();
+
+                // Upload to Supabase using Signed URL
+                const uploadRes = await fetch(signedUrl, {
+                    method: "PUT",
+                    body: media.file,
+                    headers: {
+                        "Content-Type": media.file.type
+                    }
+                });
+
+                if (!uploadRes.ok) {
+                    throw new Error(`Failed to upload ${media.file.name}`);
+                }
+
+                uploadedMedia.push({
+                    url: publicUrl,
+                    type: media.type, // 'image' or 'video'
+                    filename: media.file.name
+                });
+            }
+
+            // 2. Submit Post Data with Media URLs
             const formData = new FormData();
             formData.append("postTitle", title.trim());
             if (description.trim()) {
@@ -138,15 +275,18 @@ function NewPostPageContent() {
             if (user.imageUrl) {
                 formData.append("userImageUrl", user.imageUrl);
             }
+            if (tags.length > 0) {
+                formData.append("tags", JSON.stringify(tags));
+            }
 
-            // Append all media files
-            mediaFiles.forEach((m) => {
-                formData.append("mediaFiles", m.file);
-            });
+            // Append the uploaded media info instead of raw files
+            if (uploadedMedia.length > 0) {
+                formData.append("mediaUrls", JSON.stringify(uploadedMedia));
+            }
 
             const response = await fetch("/api/posts", {
                 method: "POST",
-                body: formData, // No Content-Type header needed, fetch sets it with boundary
+                body: formData,
             });
 
             const result = await response.json();
@@ -155,9 +295,9 @@ function NewPostPageContent() {
             } else if (result.post) {
                 router.push(`/post/${result.post._id}`);
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error creating post:", error);
-            setError("Failed to create post. Please try again.");
+            setError(error.message || "Failed to create post. Please try again.");
         } finally {
             setLoading(false);
         }
@@ -263,11 +403,111 @@ function NewPostPageContent() {
                             >
                                 Caption (optional)
                             </Label>
+                            <div className="flex justify-end mb-2">
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={generateDescription}
+                                    disabled={isGeneratingDescription}
+                                    className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                                >
+                                    <Sparkles className="w-4 h-4 mr-1" />
+                                    {isGeneratingDescription ? "Generating..." : "AI Suggest"}
+                                </Button>
+                            </div>
                             <RichTextEditor
                                 value={description}
                                 onChange={setDescription}
                                 placeholder="Write something..."
                             />
+                        </div>
+
+                        {/* Tags */}
+                        <div>
+                            <div className="flex items-center justify-between mb-2">
+                                <Label
+                                    htmlFor="tags"
+                                    className="text-lg font-medium text-gray-900"
+                                >
+                                    Add tags (optional)
+                                </Label>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={generateTags}
+                                    disabled={isGeneratingTags}
+                                    className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                                >
+                                    <Sparkles className="w-4 h-4 mr-1" />
+                                    {isGeneratingTags ? "Generating..." : "AI Suggest"}
+                                </Button>
+                            </div>
+                            <div className="relative">
+                                <Input
+                                    id="tags"
+                                    placeholder="Type a tag and press Enter"
+                                    value={tagInput}
+                                    onChange={(e) => {
+                                        setTagInput(e.target.value);
+                                        setShowSuggestions(true);
+                                    }}
+                                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                                    onFocus={() => setShowSuggestions(true)}
+                                    onKeyDown={handleAddTag}
+                                    maxLength={20}
+                                />
+                                <p className="text-sm text-gray-500 mt-1">
+                                    Press Enter to add tags. Maximum 5 tags.
+                                </p>
+
+                                {/* Tag Suggestions */}
+                                {tagInput && showSuggestions && (
+                                    <div className="absolute z-10 w-full max-w-md bg-white border border-gray-200 rounded-md shadow-lg mt-1">
+                                        {existingTags
+                                            .filter(tag => tag.toLowerCase().includes(tagInput.toLowerCase()) && !tags.includes(tag))
+                                            .slice(0, 5)
+                                            .map((tag, index) => (
+                                                <div
+                                                    key={index}
+                                                    className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                                                    onClick={() => {
+                                                        if (!tags.includes(tag) && tags.length < 5) {
+                                                            setTags([...tags, tag]);
+                                                            setTagInput("");
+                                                            setShowSuggestions(false);
+                                                        }
+                                                    }}
+                                                >
+                                                    <Hash className="w-3 h-3 inline mr-2 text-gray-400" />
+                                                    {tag}
+                                                </div>
+                                            ))}
+                                    </div>
+                                )}
+
+                                {tags.length > 0 && (
+                                    <div className="flex flex-wrap gap-2 mt-3">
+                                        {tags.map((tag, index) => (
+                                            <span
+                                                key={index}
+                                                className="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full"
+                                            >
+                                                <Hash className="w-3 h-3 mr-1" />
+                                                {tag}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemoveTag(tag)}
+                                                    className="ml-2 text-gray-500 hover:text-gray-700"
+                                                >
+                                                    ×
+                                                </button>
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         {/* Category */}

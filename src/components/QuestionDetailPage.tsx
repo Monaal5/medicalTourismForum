@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import ReportDialog from "@/components/ReportDialog";
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
@@ -142,6 +143,15 @@ export default function QuestionDetailPage({
     if (!initialQuestion) {
       fetchQuestion();
     }
+    // Increment view count
+    const incrementView = async () => {
+      try {
+        await fetch(`/api/questions/${questionId}/view`, { method: 'POST' });
+      } catch (err) {
+        console.error("Failed to increment view count", err);
+      }
+    };
+    incrementView();
   }, [questionId, initialQuestion]);
 
   useEffect(() => {
@@ -208,7 +218,8 @@ export default function QuestionDetailPage({
         }
         console.error('API error:', errorData);
         // Safely access error properties
-        const errorMessage = errorData?.error || errorData?.details || `HTTP ${response.status}: Failed to fetch question`;
+        const errorMessage = errorData?.error || errorData?.details ||
+          (response.status === 404 ? "Question not found" : `HTTP ${response.status}: Failed to fetch question`);
         throw new Error(errorMessage);
       }
 
@@ -652,40 +663,49 @@ export default function QuestionDetailPage({
               </Link>
             </div>
 
-            {/* Three-dot menu for question owner */}
-            {user && question.author && (user.id === question.author.clerkId) && (
+            {/* Three-dot menu */}
+            {user && (
               <div className="relative flex-shrink-0" ref={questionMenuRef}>
                 <button
-                  onClick={() => {
-                    console.log('User ID:', user.id);
-                    console.log('Author Clerk ID:', question.author?.clerkId);
-                    console.log('Match:', user.id === question.author?.clerkId);
-                    setShowQuestionMenu(!showQuestionMenu);
-                  }}
+                  onClick={() => setShowQuestionMenu(!showQuestionMenu)}
                   className="text-gray-400 hover:text-gray-600 p-1.5 rounded-full hover:bg-gray-100 transition-colors"
-                  disabled={deletingQuestion}
                 >
                   <MoreHorizontal className="w-5 h-5" />
                 </button>
                 {showQuestionMenu && (
                   <div className="absolute right-0 mt-1 w-48 bg-card rounded-lg shadow-lg border border-border z-10 py-1">
-                    <button
-                      onClick={handleDeleteQuestion}
-                      disabled={deletingQuestion || user.id !== question.author?.clerkId}
-                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {deletingQuestion ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>Deleting...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Trash2 className="w-4 h-4" />
-                          <span>Delete Question</span>
-                        </>
-                      )}
-                    </button>
+                    {question.author?.clerkId === user.id ? (
+                      <button
+                        onClick={handleDeleteQuestion}
+                        disabled={deletingQuestion}
+                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {deletingQuestion ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>Deleting...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 className="w-4 h-4" />
+                            <span>Delete Question</span>
+                          </>
+                        )}
+                      </button>
+                    ) : (
+                      <ReportDialog
+                        targetId={question._id}
+                        targetType="question"
+                        userId={user.id}
+                        trigger={
+                          <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2">
+                            <Flag className="w-4 h-4" />
+                            <span>Report Question</span>
+                          </button>
+                        }
+                        onOpenChange={(open) => !open && setShowQuestionMenu(false)}
+                      />
+                    )}
                   </div>
                 )}
               </div>

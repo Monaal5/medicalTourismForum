@@ -1,19 +1,37 @@
+
 import { NextResponse } from 'next/server';
-import { getUser } from '@/sanity/lib/user/getUser';
+import { auth } from '@clerk/nextjs/server';
+import { supabase } from '@/lib/supabase';
 
 export async function GET() {
   try {
-    console.log('API route: Starting to fetch user...');
-    const result = await getUser();
-    console.log('API route: getUser result:', result);
-    
-    if ('error' in result) {
-      console.log('API route: User not found, error:', result.error);
-      return NextResponse.json({ error: result.error }, { status: 404 });
+    const { userId } = await auth();
+
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    
-    console.log('API route: Returning user data:', result);
-    return NextResponse.json(result);
+
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('clerk_id', userId)
+      .single();
+
+    if (error || !user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Map to Sanity-like structure for now to keep frontend compatible
+    return NextResponse.json({
+      _id: user.id,
+      username: user.username,
+      email: user.email,
+      imageUrl: user.image_url,
+      bio: user.bio,
+      joinedAt: user.joined_at,
+      clerkId: user.clerk_id
+    });
+
   } catch (error) {
     console.error('API route: Error fetching current user:', error);
     return NextResponse.json({ error: 'Failed to fetch user' }, { status: 500 });

@@ -1,14 +1,21 @@
+
 "use client";
 
 import { useUser } from "@clerk/nextjs";
 import { useEffect, useRef } from "react";
+import { useRouter, usePathname } from "next/navigation";
 
 export default function UserSync() {
     const { user, isSignedIn } = useUser();
+    const router = useRouter();
+    const pathname = usePathname();
     const syncedRef = useRef(false);
 
     useEffect(() => {
         if (!isSignedIn || !user || syncedRef.current) return;
+
+        // Don't sync if already on onboarding page to avoid loops
+        if (pathname?.startsWith('/onboarding')) return;
 
         const syncUser = async () => {
             try {
@@ -24,9 +31,16 @@ export default function UserSync() {
                     }),
                 });
 
+                const data = await response.json();
+
                 if (response.ok) {
                     syncedRef.current = true;
-                    console.log("User synced successfully");
+                    if (data.action === "onboarding_required") {
+                        console.log("Redirecting to onboarding...");
+                        router.push("/onboarding");
+                    } else {
+                        console.log("User synced successfully");
+                    }
                 } else {
                     console.error("Failed to sync user");
                 }
@@ -36,7 +50,7 @@ export default function UserSync() {
         };
 
         syncUser();
-    }, [isSignedIn, user]);
+    }, [isSignedIn, user, router, pathname]);
 
     return null;
 }

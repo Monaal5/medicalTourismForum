@@ -135,9 +135,9 @@ export default function CommentCard({
             </span>
             <span className="mx-1">•</span>
             <span>
-              {formatDistanceToNow(new Date(comment.createdAt), {
+              {comment.createdAt ? formatDistanceToNow(new Date(comment.createdAt), {
                 addSuffix: true,
-              })}
+              }) : "Just now"}
             </span>
           </div>
 

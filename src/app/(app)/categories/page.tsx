@@ -14,6 +14,9 @@ import {
   Stethoscope,
   Pill,
   Hash,
+  MessageSquare,
+  FileText,
+  BarChart3,
 } from "lucide-react";
 import Link from "next/link";
 import toast from "react-hot-toast";
@@ -27,6 +30,8 @@ interface Category {
   icon?: string;
   color?: string;
   questionCount?: number;
+  postCount?: number;
+  pollCount?: number;
 }
 
 const defaultCategories = [
@@ -382,9 +387,20 @@ export default function CategoriesPage() {
                     <h3 className="font-semibold text-gray-900">
                       {category.name}
                     </h3>
-                    <p className="text-sm text-gray-500">
-                      {category.questionCount || 0} questions
-                    </p>
+                    <div className="text-xs text-gray-500 mt-1 space-y-1">
+                      <div className="flex items-center gap-1.5">
+                        <MessageSquare className="w-3 h-3" />
+                        <span>{category.questionCount || 0} Questions</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <FileText className="w-3 h-3" />
+                        <span>{category.postCount || 0} Posts</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <BarChart3 className="w-3 h-3" />
+                        <span>{category.pollCount || 0} Polls</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -396,7 +412,6 @@ export default function CategoriesPage() {
                   >
                     <Edit className="w-4 h-4" />
                   </Button>
-                  {/* Delete button removed */}
                 </div>
               </div>
 
@@ -416,21 +431,23 @@ export default function CategoriesPage() {
           ))}
         </div>
 
-        {categories.length === 0 && (
-          <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-            <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-2xl">📚</span>
+        {
+          categories.length === 0 && (
+            <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+              <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">📚</span>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                No categories yet
+              </h3>
+              <p className="text-gray-500 mb-4">
+                Create your first category to organize questions better!
+              </p>
+              {/* Create Category button removed */}
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              No categories yet
-            </h3>
-            <p className="text-gray-500 mb-4">
-              Create your first category to organize questions better!
-            </p>
-            {/* Create Category button removed */}
-          </div>
-        )}
-      </div>
-    </div>
+          )
+        }
+      </div >
+    </div >
   );
 }

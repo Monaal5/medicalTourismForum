@@ -1,9 +1,8 @@
-import { NextResponse } from "next/server";
-import { adminClient } from "@/sanity/lib/adminClient";
-import { currentUser } from "@clerk/nextjs/server";
-import { defineQuery } from "groq";
 
-// GET method to fetch question with answers and comments
+import { NextResponse } from "next/server";
+import { supabaseAdmin as supabase } from "@/lib/supabase";
+import { currentUser } from "@clerk/nextjs/server";
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ questionId: string }> }
@@ -13,141 +12,69 @@ export async function GET(
 
     console.log('=== API GET /api/questions/[questionId] ===');
     console.log('Question ID:', questionId);
-    console.log('Request URL:', request.url);
 
-    // First, try a simple query to see if the question exists at all
-    const simpleCheckQuery = `*[_type == "question" && _id == $questionId][0]{ _id, title, isDeleted }`;
-    console.log('Running simple check query...');
+    // Fetch Question
+    const { data: question, error } = await supabase
+      .from('questions')
+      .select(`
+            *,
+            author:users!author_id(id, username, image_url, clerk_id),
+            category:categories(id, name, slug)
+        `)
+      .eq('id', questionId)
+      .single();
 
-    const simpleCheck = await adminClient.fetch(simpleCheckQuery, { questionId });
-    console.log('Simple check result:', simpleCheck);
-
-    if (!simpleCheck) {
-      console.log('❌ Question not found in database');
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Question not found",
-          questionId,
-          message: "This question does not exist in the database"
-        },
-        { status: 404 }
-      );
+    if (error || !question) {
+      console.log("Question not found db error:", error);
+      return NextResponse.json({ error: "Question not found" }, { status: 404 });
     }
 
-    if (simpleCheck.isDeleted) {
-      console.log('❌ Question is marked as deleted');
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Question has been deleted",
-          questionId
-        },
-        { status: 404 }
-      );
-    }
+    // Get Answers
+    const { data: answers, error: answerError } = await supabase
+      .from('answers')
+      .select(`
+            *,
+            author:users(id, username, image_url, clerk_id)
+        `)
+      .eq('question_id', questionId)
+      .order('created_at', { ascending: false });
 
-    console.log('✓ Question exists, fetching full details...');
+    const mapUser = (u: any) => u ? ({
+      _id: u.id,
+      username: u.username,
+      imageUrl: u.image_url,
+      clerkId: u.clerk_id
+    }) : null;
 
-    // Simplified query to avoid nested query issues
-    const questionQuery = `
-      *[_type == "question" && _id == $questionId && !isDeleted][0] {
-        _id,
-        title,
-        description,
-        author->{
-          _id,
-          username,
-          imageUrl,
-          bio,
-          clerkId
-        },
-        category->{
-          name,
-          color,
-          slug
-        },
-        tags,
-        createdAt,
-        updatedAt,
-        "answerCount": count(*[_type == "answer" && references(^._id) && !isDeleted]),
-        "viewCount": 0,
-        "followerCount": 0,
-        "isFollowing": false,
-        "isBookmarked": false
-      }
-    `;
+    const mappedQuestion = {
+      _id: question.id,
+      title: question.title,
+      description: question.description,
+      tags: question.tags,
+      createdAt: question.created_at,
+      updatedAt: question.created_at, // or updated_at if exists
+      author: mapUser(Array.isArray(question.author) ? question.author[0] : question.author),
+      category: question.category,
+      answerCount: answers?.length || 0,
+      viewCount: question.view_count || 0,
+      answers: answers?.map((a: any) => ({
+        _id: a.id,
+        content: a.body?.content || a.body || "",
+        createdAt: a.created_at,
+        author: mapUser(Array.isArray(a.author) ? a.author[0] : a.author),
+        isAccepted: a.is_accepted
+      })) || []
+    };
 
-    console.log('Executing question query...');
-    const question = await adminClient.fetch(questionQuery, { questionId });
-
-    console.log('Question fetch result:', question ? 'Found' : 'Not found');
-
-    if (!question) {
-      console.log('❌ Query returned no result');
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Question not found"
-        },
-        { status: 404 }
-      );
-    }
-
-    // Fetch answers separately to avoid complex nested queries
-    const answersQuery = `
-      *[_type == "answer" && references($questionId) && !isDeleted] | order(createdAt desc) {
-        _id,
-        content,
-        author->{
-          _id,
-          username,
-          imageUrl,
-          bio,
-          clerkId
-        },
-        createdAt,
-        updatedAt,
-        "voteCount": 0,
-        "userVote": null,
-        "isAccepted": false,
-        "commentCount": 0,
-        "comments": *[_type == "comment" && answer._ref == ^._id && !isDeleted] | order(createdAt asc) {
-          _id,
-          comment,
-          createdAt,
-          author->{
-            username,
-            imageUrl,
-            clerkId
-          }
-        }
-      }
-    `;
-
-    console.log('Fetching answers...');
-    const answers = await adminClient.fetch(answersQuery, { questionId });
-    console.log('Answers found:', answers?.length || 0);
-
-    // Add answers to question
-    question.answers = answers || [];
-
-    console.log('✓ Returning question successfully');
     return NextResponse.json({
       success: true,
-      question
+      question: mappedQuestion
     });
-  } catch (error) {
-    console.error("❌ Error fetching question:", error);
-    console.error("Error details:", error instanceof Error ? error.message : 'Unknown error');
-    console.error("Error stack:", error instanceof Error ? error.stack : 'No stack trace');
 
+  } catch (error: any) {
+    console.error("Error fetching question:", error);
     return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to fetch question",
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
+      { error: "Failed to fetch question: " + error.message },
       { status: 500 }
     );
   }
@@ -155,89 +82,49 @@ export async function GET(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: Promise<{ questionId: string }> },
+  { params }: { params: Promise<{ questionId: string }> }
 ) {
   try {
-    // Get current user from Clerk
-    const clerkUser = await currentUser();
-
-    if (!clerkUser) {
+    const user = await currentUser();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { questionId } = await params;
 
-    console.log('=== DELETE QUESTION API ===');
-    console.log('Question ID:', questionId);
-    console.log('Clerk User ID:', clerkUser.id);
+    // 1. Fetch Question to check owner
+    const { data: question, error } = await supabase
+      .from('questions')
+      .select('author_id, author:users!author_id(clerk_id)')
+      .eq('id', questionId)
+      .single();
 
-    // Get the current user's Sanity username
-    const currentSanityUser = await adminClient.fetch(
-      `*[_type == "user" && clerkId == $userId][0]{ username }`,
-      { userId: clerkUser.id }
-    );
-
-    console.log('Current Sanity User:', currentSanityUser);
-
-    if (!currentSanityUser) {
-      return NextResponse.json(
-        { error: "User not found in database" },
-        { status: 404 }
-      );
+    if (error || !question) {
+      return NextResponse.json({ error: "Question not found" }, { status: 404 });
     }
 
-    // Fetch the question to verify ownership
-    const question = await adminClient.fetch(
-      `*[_type == "question" && _id == $questionId][0]{
-        _id,
-        author->{
-          username
-        }
-      }`,
-      { questionId },
-    );
+    // 2. Check Ownership (compare Clerk ID)
+    const author = Array.isArray(question.author) ? question.author[0] : question.author;
+    const isOwner = author?.clerk_id === user.id;
+    // Also allow admin? (user email check)
+    const isAdmin = user.emailAddresses[0]?.emailAddress === 'monaalmamen@gmail.com';
 
-    console.log('Question data:', question);
-    console.log('Question author username:', question?.author?.username);
-    console.log('Current user username:', currentSanityUser.username);
-
-    if (!question) {
-      return NextResponse.json(
-        { error: "Question not found" },
-        { status: 404 },
-      );
+    if (!isOwner && !isAdmin) {
+      return NextResponse.json({ error: "Unauthorized: You can only delete your own questions" }, { status: 403 });
     }
 
-    // Verify the user owns this question by comparing usernames
-    if (question.author?.username?.toLowerCase() !== currentSanityUser.username?.toLowerCase()) {
-      console.log('❌ Ownership check failed');
-      return NextResponse.json(
-        {
-          error: "You can only delete your own questions",
-          details: `Author: ${question.author?.username}, Current: ${currentSanityUser.username}`
-        },
-        { status: 403 },
-      );
-    }
+    // 3. Delete
+    const { error: deleteError } = await supabase
+      .from('questions')
+      .delete()
+      .eq('id', questionId);
 
-    console.log('✅ Ownership verified, deleting question...');
+    if (deleteError) throw deleteError;
 
-    // Soft delete by setting isDeleted flag
-    await adminClient.patch(questionId).set({ isDeleted: true }).commit();
+    return NextResponse.json({ success: true, message: "Question deleted successfully" });
 
-    console.log('✅ Question deleted successfully');
-
-    return NextResponse.json({
-      success: true,
-      message: "Question deleted successfully",
-    });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error deleting question:", error);
-    return NextResponse.json(
-      { error: "Failed to delete question" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to delete question: " + error.message }, { status: 500 });
   }
 }
-
-

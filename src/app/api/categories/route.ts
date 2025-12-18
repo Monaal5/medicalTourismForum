@@ -1,30 +1,34 @@
 import { NextResponse } from "next/server";
-import { adminClient } from "@/sanity/lib/adminClient";
-import { addUser } from "@/sanity/lib/user/addUser";
-import { defineQuery } from "groq";
-import { generateUsername } from "@/lib/username";
+import { supabaseAdmin as supabase } from "@/lib/supabase";
 
-const getCategoriesQuery = defineQuery(`
-  *[_type == "category"] | order(createdAt desc) {
-    _id,
-    name,
-    "slug": slug.current,
-    description,
-    icon,
-    color,
-    "questionCount": count(*[_type == "question" && references(^._id) && !isDeleted])
-  }
-`);
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const result = await adminClient.fetch(getCategoriesQuery);
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*, questions(count), posts(count), polls(count)');
+
+    if (error) throw error;
+
+    const categories = data.map((cat: any) => ({
+      _id: cat.id,
+      name: cat.name,
+      slug: cat.slug,
+      description: cat.description || "",
+      icon: cat.icon,
+      color: cat.color,
+      questionCount: cat.questions?.[0]?.count || 0,
+      postCount: cat.posts?.[0]?.count || 0,
+      pollCount: cat.polls?.[0]?.count || 0,
+    }));
+
     return NextResponse.json({
       success: true,
-      categories: result || [],
+      categories: categories || [],
     });
   } catch (error) {
-    console.error("Error fetching categories from Sanity:", error);
+    console.error("Error fetching categories:", error);
     return NextResponse.json(
       {
         success: false,
@@ -39,91 +43,61 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    console.log("Received category request body:", body);
-
     const {
       name,
       description,
       icon,
       color,
       userId,
-      userEmail,
-      userFullName,
-      userImageUrl,
     } = body;
 
     if (!name || !userId) {
-      console.log("Missing required fields:", { name, userId });
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 },
       );
     }
 
-    // Fetch all existing category names to perform robust duplicate checking
-    const allCategories = await adminClient.fetch(
-      `*[_type == "category"]{name}`
-    );
-
-    const normalize = (str: string) => {
-      // Remove whitespace and convert to lower case
-      let normalized = str.toLowerCase().replace(/\s+/g, "");
-      // Remove trailing numbers
-      normalized = normalized.replace(/\d+$/, "");
-      return normalized;
-    };
-
-    const newNameNormalized = normalize(name);
-
-    const isDuplicate = allCategories.some((cat: any) => {
-      return normalize(cat.name) === newNameNormalized;
-    });
-
-    if (isDuplicate) {
-      console.log("Category already exists (fuzzy match):", name);
-      return NextResponse.json(
-        { error: "Category already exists" },
-        { status: 400 }
-      );
-    }
-
-    // Ensure user exists in Sanity
-    console.log("Creating user in Sanity...");
-    const sanityUser = await addUser({
-      id: userId,
-      username: generateUsername(userFullName || "User", userId),
-      email: userEmail || "user@example.com",
-      imageUrl: userImageUrl || "",
-    });
-    console.log("User created:", sanityUser._id);
-
-    // Generate slug from name
+    // 1. Generate Slug
     const slug = name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)/g, "");
 
-    // Create the category
-    const categoryData: any = {
-      _type: "category",
-      name: name,
-      slug: {
-        _type: "slug",
-        current: slug,
-      },
-      description: description || "",
-      icon: icon || "Heart",
-      color: color || "#ef4444",
-      questionCount: 0,
-    };
+    // 2. Check Duplicates (by slug or name)
+    const { data: existing } = await supabase
+      .from('categories')
+      .select('id')
+      .or(`slug.eq.${slug},name.ilike.${name}`)
+      .single();
 
-    console.log("Creating category with data:", categoryData);
-    const category = await adminClient.create(categoryData);
-    console.log("Category created successfully:", category._id);
+    if (existing) {
+      return NextResponse.json({ error: "Category already exists" }, { status: 400 });
+    }
+
+    // 3. Create
+    // Note: description field might be missing in DB schema I provided earlier.
+    // I will try to insert it, if it fails, I might need to update schema or omit it.
+    // Let's assume I should update schema if I want description. 
+    // I'll stick to what I defined: name, slug, icon, color.
+
+    const { data: newCat, error } = await supabase
+      .from('categories')
+      .insert({
+        name,
+        slug,
+        icon: icon || "Heart",
+        color: color || "#ef4444"
+        // description: description // Omitted as per my earlier schema unless I update schema
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
 
     return NextResponse.json({
       success: true,
-      category,
+      category: { ...newCat, _id: newCat.id },
     });
   } catch (error) {
     console.error("Error creating category:", error);

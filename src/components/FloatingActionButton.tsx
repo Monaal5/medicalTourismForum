@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Edit, X, HelpCircle, MessageSquare, FileText } from "lucide-react";
+import { Edit, X, HelpCircle, MessageSquare, FileText, BarChart2 } from "lucide-react";
 import Link from "next/link";
 
 export default function FloatingActionButton() {
@@ -24,6 +24,12 @@ export default function FloatingActionButton() {
             href: "/create-post",
             icon: FileText,
             color: "bg-purple-600 hover:bg-purple-700",
+        },
+        {
+            name: "Poll",
+            href: "/create-poll",
+            icon: BarChart2,
+            color: "bg-orange-500 hover:bg-orange-600",
         },
     ];
 

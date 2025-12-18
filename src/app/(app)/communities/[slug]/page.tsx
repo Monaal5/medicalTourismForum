@@ -1,10 +1,10 @@
-import { sanityFetch } from "@/sanity/lib/live";
-import { defineQuery } from "groq";
+
 import { formatDistanceToNow } from "date-fns";
 import { Plus } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import PostCard from "@/components/PostCard";
+import { supabase } from "@/lib/supabase";
 
 interface PostWithDetails {
     _id: string;
@@ -59,73 +59,76 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
     let loading = false;
 
     try {
-        // Fetch community details
-        const communityQuery = defineQuery(`
-      *[_type == "subreddit" && slug.current == $slug][0] {
-        _id,
-        title,
-        description,
-        image,
-        moderator->{
-          username
-        },
-        createdAt
-      }
-    `);
+        // Fetch community details from Supabase
+        const { data: communityData, error } = await supabase
+            .from('communities')
+            .select(`
+                *,
+                moderator:users(username)
+            `)
+            .eq('slug', slug)
+            .single();
 
-        const communityResult = await sanityFetch({
-            query: communityQuery,
-            params: { slug },
-        });
+        if (error || !communityData) {
+            console.error("Community fetch error:", error);
+            // Don't throw Immediately, let the null check handle it below
+        } else {
+            // Map Supabase to Sanity-like structure
+            community = {
+                _id: communityData.id,
+                title: communityData.title,
+                slug: { current: communityData.slug },
+                description: communityData.description,
+                createdAt: communityData.created_at,
+                moderator: communityData.moderator ? { username: communityData.moderator.username } : undefined,
+                image: communityData.image_url ? { asset: { url: communityData.image_url } } : undefined
+            };
 
-        if (communityResult.data) {
-            community = communityResult.data as unknown as CommunityDetails;
+            // Fetch posts for this community from Supabase
+            // Note: Schema for posts might fetch based on 'community_id'
+            const { data: postsData } = await supabase
+                .from('posts')
+                .select(`
+                    *,
+                    author:users(username, image_url, clerk_id),
+                    community:communities(title, slug)
+                `)
+                .eq('community_id', communityData.id)
+                .order('created_at', { ascending: false });
+
+            if (postsData) {
+                posts = postsData.map((post: any) => ({
+                    _id: post.id,
+                    postTitle: post.title,
+                    body: post.body ? [{ _type: 'block', children: [{ _type: 'span', text: typeof post.body === 'string' ? post.body : "Content" }] }] : [],
+                    image: post.image_url ? { asset: { url: post.image_url } } : undefined,
+                    publishedAt: post.created_at || post.published_at,
+                    author: {
+                        username: post.author?.username || 'user',
+                        imageUrl: post.author?.image_url || '',
+                        clerkId: post.author?.clerk_id
+                    },
+                    subreddit: {
+                        title: post.community?.title || '',
+                        slug: { current: post.community?.slug || '' }
+                    },
+                    voteCount: 0, // Implement vote count query if needed
+                    commentCount: 0 // Implement comment count if needed
+                }));
+            }
         }
 
-        // Fetch posts for this community
-        const postsQuery = defineQuery(`
-      *[_type == "post" && !isDeleted && subreddit->slug.current == $slug] | order(publishedAt desc) [0...20] {
-        _id,
-        postTitle,
-        body,
-        image,
-        publishedAt,
-        author->{
-          username,
-          imageUrl
-        },
-        subreddit->{
-          title,
-          slug
-        }
-      }
-    `);
-
-        const postsResult = await sanityFetch({
-            query: postsQuery,
-            params: { slug },
-        });
-
-        if (postsResult.data) {
-            posts = postsResult.data as unknown as PostWithDetails[];
-        }
     } catch (error) {
         console.error("Error fetching community data:", error);
         loading = true;
     }
 
     if (loading) {
+        // ... (existing loading state)
         return (
             <div className="min-h-screen bg-gray-50">
                 <div className="max-w-4xl mx-auto p-4">
-                    <div className="space-y-4">
-                        {[...Array(5)].map((_, i) => (
-                            <div key={i} className="bg-white rounded-lg p-4 animate-pulse">
-                                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                            </div>
-                        ))}
-                    </div>
+                    <p>Loading...</p>
                 </div>
             </div>
         );
@@ -158,15 +161,18 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
                 {/* Community Header */}
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
                     <div className="flex items-center space-x-4">
-                        {community.image && community.image.asset?.url && (
-                            <div className="w-16 h-16 rounded-full overflow-hidden">
+                        {community.image && community.image.asset?.url ? (
+                            <div className="w-16 h-16 rounded-full overflow-hidden relative">
                                 <Image
                                     src={community.image.asset.url}
                                     alt={community.title}
-                                    width={64}
-                                    height={64}
-                                    className="w-full h-full object-cover"
+                                    fill
+                                    className="object-cover"
                                 />
+                            </div>
+                        ) : (
+                            <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold text-xl">
+                                {community.title.charAt(0).toUpperCase()}
                             </div>
                         )}
                         <div className="flex-1">
@@ -175,8 +181,12 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
                             </h1>
                             <p className="text-gray-600">{community.description}</p>
                             <div className="flex items-center text-sm text-gray-500 mt-2">
-                                <span>Created by u/{community.moderator?.username}</span>
-                                <span className="mx-1">•</span>
+                                {community.moderator && (
+                                    <>
+                                        <span>Created by u/{community.moderator.username}</span>
+                                        <span className="mx-1">•</span>
+                                    </>
+                                )}
                                 <span>
                                     {formatDistanceToNow(new Date(community.createdAt), {
                                         addSuffix: true,

@@ -1,6 +1,7 @@
-import { sanityFetch } from "@/sanity/lib/live";
-import { defineQuery } from "groq";
+
 import CreatePostForm from "@/components/CreatePostForm";
+import { supabase } from "@/lib/supabase";
+import Link from "next/link";
 
 interface CommunityDetails {
     _id: string;
@@ -21,31 +22,34 @@ interface CreatePostPageProps {
     }>;
 }
 
-const subredditQuery = defineQuery(`
-  *[_type == "subreddit" && slug.current == $slug][0]{
-    _id,
-    title,
-    slug,
-  }
-`);
-
 export default async function CreatePostPage({ params }: CreatePostPageProps) {
     const { slug } = await params;
     let community: CommunityDetails | null = null;
     let loading = false;
 
     try {
-        const result = await sanityFetch({
-            query: subredditQuery,
-            params: { slug },
-        });
+        const { data: communityData, error } = await supabase
+            .from('communities')
+            .select('id, title, slug, description, created_at')
+            .eq('slug', slug)
+            .single();
 
-        if (result.data) {
-            community = result.data as CommunityDetails;
+        if (error || !communityData) {
+            // console.error("Error fetching community:", error);
+            // community remains null
+        } else {
+            community = {
+                _id: communityData.id,
+                title: communityData.title,
+                slug: { current: communityData.slug },
+                description: communityData.description,
+                createdAt: communityData.created_at
+            };
         }
+
     } catch (error) {
         console.error("Error fetching subreddit:", error);
-        loading = true;
+        loading = true; // Technically error state
     }
 
     if (loading) {
@@ -66,6 +70,9 @@ export default async function CreatePostPage({ params }: CreatePostPageProps) {
                     <p className="text-gray-600">
                         The community you're looking for doesn't exist.
                     </p>
+                    <Link href="/" className="text-blue-500 hover:underline mt-4 block">
+                        Go Home
+                    </Link>
                 </div>
             </div>
         );

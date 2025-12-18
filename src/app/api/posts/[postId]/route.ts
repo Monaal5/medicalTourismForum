@@ -1,5 +1,6 @@
+
 import { NextResponse } from "next/server";
-import { adminClient } from "@/sanity/lib/adminClient";
+import { supabaseAdmin as supabase } from "@/lib/supabase";
 import { currentUser } from "@clerk/nextjs/server";
 
 export async function DELETE(
@@ -7,82 +8,51 @@ export async function DELETE(
   { params }: { params: Promise<{ postId: string }> }
 ) {
   try {
-    // Get current user from Clerk
-    const clerkUser = await currentUser();
-
-    if (!clerkUser) {
+    const user = await currentUser();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { postId } = await params;
 
-    console.log('=== DELETE POST API ===');
-    console.log('Post ID:', postId);
-    console.log('Clerk User ID:', clerkUser.id);
+    // 1. Fetch Post to check owner
+    const { data: post, error } = await supabase
+      .from('posts')
+      .select('author_id, author:users!author_id(clerk_id)')
+      .eq('id', postId)
+      .single();
 
-    // Get the current user's Sanity username
-    const currentSanityUser = await adminClient.fetch(
-      `*[_type == "user" && clerkId == $userId][0]{ username }`,
-      { userId: clerkUser.id }
-    );
-
-    console.log('Current Sanity User:', currentSanityUser);
-
-    if (!currentSanityUser) {
-      return NextResponse.json(
-        { error: "User not found in database" },
-        { status: 404 }
-      );
-    }
-
-    // Fetch the post to verify ownership
-    const post = await adminClient.fetch(
-      `*[_type == "post" && _id == $postId][0]{
-        _id,
-        author->{
-          username
-        }
-      }`,
-      { postId }
-    );
-
-    console.log('Post data:', post);
-    console.log('Post author username:', post?.author?.username);
-    console.log('Current user username:', currentSanityUser.username);
-
-    if (!post) {
+    if (error || !post) {
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
 
-    // Verify the user owns this post by comparing usernames
-    if (post.author?.username?.toLowerCase() !== currentSanityUser.username?.toLowerCase()) {
-      console.log('❌ Ownership check failed');
-      return NextResponse.json(
-        {
-          error: "You can only delete your own posts",
-          details: `Author: ${post.author?.username}, Current: ${currentSanityUser.username}`
-        },
-        { status: 403 }
-      );
+    // 2. Check Ownership
+    const author = Array.isArray(post.author) ? post.author[0] : post.author;
+    const isOwner = author?.clerk_id === user.id;
+    const isAdmin = user.emailAddresses[0]?.emailAddress === 'monaalmamen@gmail.com';
+
+    if (!isOwner && !isAdmin) {
+      return NextResponse.json({ error: "Unauthorized: You can only delete your own posts" }, { status: 403 });
     }
 
-    console.log('✅ Ownership verified, deleting post...');
+    // 3. Delete
+    // Cascade delete handles comments/images if configured, or we assume simple delete for now.
+    const { error: deleteError } = await supabase
+      .from('posts')
+      .delete()
+      .eq('id', postId);
 
-    // Soft delete by setting isDeleted flag
-    await adminClient.patch(postId).set({ isDeleted: true }).commit();
-
-    console.log('✅ Post deleted successfully');
+    if (deleteError) throw deleteError;
 
     return NextResponse.json({
       success: true,
       message: "Post deleted successfully",
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error deleting post:", error);
     return NextResponse.json(
-      { error: "Failed to delete post" },
+      { error: "Failed to delete post: " + error.message },
       { status: 500 }
     );
   }
 }
-

@@ -1,5 +1,5 @@
 import * as React from "react"
-import { FlameIcon, GalleryVerticalEnd, HomeIcon, Minus, Plus, TrendingUpIcon, Users, Hash, MessageSquare, Star, Clock } from "lucide-react"
+import { FlameIcon, GalleryVerticalEnd, HomeIcon, Minus, Plus, TrendingUpIcon, Users, Hash, MessageSquare, Star, Clock, BarChart3 } from "lucide-react"
 
 import { SearchForm } from "@/components/search-form"
 // import { getSubreddits } from "@/sanity/lib/subreddit/getSubreddit"
@@ -22,14 +22,14 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 import Image from "next/image"
-import  logo from "@/images/logo.png"
+import logo from "@/images/logo.png"
 import Link from "next/link"
 import logoWithName from "@/images/logoWithName.png"
 import CreateCommunityButton from "./header/CreateCommunityButton"
 import CommunitiesList from "./CommunitiesList"
 
 
-type SidebarData= {
+type SidebarData = {
   navMain: {
     title: string;
     url: string;
@@ -51,7 +51,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         url: "#",
         items: [], // Will be populated by client-side components if needed
       },
-      
+
     ],
   }
   return (
@@ -61,7 +61,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/">
-              <Image src={logoWithName} alt="logo" width={160} height={160} />
+                <Image src={logoWithName} alt="logo" width={160} height={160} />
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -77,44 +77,44 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               </SidebarMenuButton>
               <SidebarMenuButton asChild className="p-5">
                 <Link href="/">
-                
-                <HomeIcon className="w-4 h-4 mr-2" /> Home
+
+                  <HomeIcon className="w-4 h-4 mr-2" /> Home
                 </Link>
-                
+
               </SidebarMenuButton>
               <SidebarMenuButton asChild className="p-5">
                 <Link href="/hot">
-                
-                <FlameIcon className="w-4 h-4 mr-2" /> Hot/Controversial
+
+                  <FlameIcon className="w-4 h-4 mr-2" /> Hot/Controversial
                 </Link>
-                
+
               </SidebarMenuButton>
               <SidebarMenuButton asChild className="p-5">
                 <Link href="/popular">
-                
-                <TrendingUpIcon className="w-4 h-4 mr-2" /> Popular
+
+                  <TrendingUpIcon className="w-4 h-4 mr-2" /> Popular
                 </Link>
-                
+
               </SidebarMenuButton>
               <SidebarMenuButton asChild className="p-5">
                 <Link href="/categories">
-                
-                <Hash className="w-4 h-4 mr-2" /> Categories
+
+                  <Hash className="w-4 h-4 mr-2" /> Categories
                 </Link>
-                
+
               </SidebarMenuButton>
               <SidebarMenuButton asChild className="p-5">
                 <Link href="/communities">
-                
-                <Users className="w-4 h-4 mr-2" /> Communities
+
+                  <Users className="w-4 h-4 mr-2" /> Communities
                 </Link>
-                
+
               </SidebarMenuButton>
             </SidebarMenuItem>
 
           </SidebarMenu>
-            
-          
+
+
         </SidebarGroup>
 
         <SidebarGroup>
@@ -140,7 +140,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   </div>
                 </Link>
               </SidebarMenuButton>
-              
+
               <SidebarMenuButton asChild className="p-3 text-sm">
                 <Link href="/community/healthcare-questions" className="flex items-center space-x-3">
                   <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
@@ -152,7 +152,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   </div>
                 </Link>
               </SidebarMenuButton>
-              
+
               <SidebarMenuButton asChild className="p-3 text-sm">
                 <Link href="/community/medical-advice" className="flex items-center space-x-3">
                   <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
@@ -164,7 +164,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   </div>
                 </Link>
               </SidebarMenuButton>
-              
+
               <SidebarMenuButton asChild className="p-3 text-sm">
                 <Link href="/community/wellness" className="flex items-center space-x-3">
                   <div className="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
@@ -192,14 +192,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <span>Ask Question</span>
                 </Link>
               </SidebarMenuButton>
-              
+
               <SidebarMenuButton asChild className="p-3 text-sm">
                 <Link href="/create-post" className="flex items-center space-x-3">
                   <Plus className="w-4 h-4" />
                   <span>Create Post</span>
                 </Link>
               </SidebarMenuButton>
-              
+
+              <SidebarMenuButton asChild className="p-3 text-sm">
+                <Link href="/create-poll" className="flex items-center space-x-3">
+                  <BarChart3 className="w-4 h-4" />
+                  <span>Create Poll</span>
+                </Link>
+              </SidebarMenuButton>
+
               <SidebarMenuButton asChild className="p-3 text-sm">
                 <Link href="/communities/create" className="flex items-center space-x-3">
                   <Users className="w-4 h-4" />

@@ -1,68 +1,14 @@
 import React from "react";
-import { sanityFetch } from "@/sanity/lib/live";
-import { defineQuery } from "groq";
 import Link from "next/link";
 import ProfileContent from "@/components/ProfileContent";
+import {
+  getUserProfile,
+  getUserQuestions,
+  getUserPosts,
+  getUserAnswers
+} from "@/lib/db/queries";
 
-interface UserProfile {
-  _id: string;
-  clerkId?: string | null;
-  username: string | null;
-  imageUrl: string | null;
-  bio: string | null;
-  joinedAt: string | null;
-  questionsCount?: number;
-  answersCount?: number;
-  followersCount?: number;
-  followingCount?: number;
-  followers?: Array<{ _id: string; username: string | null; imageUrl: string | null }>;
-  following?: Array<{ _id: string; username: string | null; imageUrl: string | null }>;
-}
-
-interface UserQuestion {
-  _id: string;
-  title: string | null;
-  createdAt: string | null;
-  answerCount?: number;
-  category: {
-    name: string | null;
-    color:
-    | "blue"
-    | "red"
-    | "pink"
-    | "orange"
-    | "green"
-    | "purple"
-    | "gray"
-    | null;
-  } | null;
-}
-
-interface UserAnswer {
-  _id: string;
-  content: any[];
-  question: {
-    _id: string;
-    title: string;
-  };
-  createdAt: string;
-  voteCount?: number;
-}
-
-interface UserPost {
-  _id: string;
-  postTitle: string | null;
-  body?: any[] | null;
-  image?: any;
-  publishedAt: string | null;
-  subreddit: {
-    title: string | null;
-    slug: {
-      current?: string | null;
-    } | null;
-  } | null;
-  commentCount?: number;
-}
+// ... interfaces ... (can keep or move to types)
 
 interface ProfilePageProps {
   params: Promise<{
@@ -70,143 +16,29 @@ interface ProfilePageProps {
   }>;
 }
 
-const userQuery = defineQuery(`
-  *[_type == "user" && username == $username][0] {
-    _id,
-    clerkId,
-    username,
-    imageUrl,
-    bio,
-    joinedAt,
-    "questionsCount": count(*[_type == "question" && author._ref == ^._id && !isDeleted]),
-    "answersCount": count(*[_type == "answer" && author._ref == ^._id && !isDeleted]),
-    "postsCount": count(*[_type == "post" && author._ref == ^._id && !isDeleted]),
-    "followersCount": count(coalesce(followers, [])),
-    "followingCount": count(coalesce(following, [])),
-    "followers": coalesce(followers, [])[]->{ _id, username, imageUrl },
-    "following": coalesce(following, [])[]->{ _id, username, imageUrl }
-  }
-`);
-
-const userQuestionsQuery = defineQuery(`
-  *[_type == "question" && author._ref == $userId && !isDeleted] | order(createdAt desc) [0...10] {
-    _id,
-    title,
-    createdAt,
-    "answerCount": count(*[_type == "answer" && references(^._id) && !isDeleted]),
-    category->{
-      name,
-      color
-    }
-  }
-`);
-
-const userAnswersQuery = defineQuery(`
-  *[_type == "answer" && author._ref == $userId && !isDeleted] | order(createdAt desc) [0...10] {
-    _id,
-    content,
-    question->{
-      _id,
-      title
-    },
-    createdAt,
-    "voteCount": coalesce(count(votes[].voteType == "upvote") - count(votes[].voteType == "downvote"), 0)
-  }
-`);
-
-const userPostsQuery = defineQuery(`
-  *[_type == "post" && author._ref == $userId && !isDeleted] | order(publishedAt desc) [0...10] {
-    _id,
-    postTitle,
-    body,
-    image,
-    publishedAt,
-    subreddit->{
-      title,
-      slug
-    },
-    "commentCount": count(*[_type == "comment" && references(^._id) && !isDeleted])
-  }
-`);
-
 export default async function UserProfilePage({ params }: ProfilePageProps) {
   const { username } = await params;
-  let user: UserProfile | null = null;
-  let questions: UserQuestion[] = [];
-  let answers: UserAnswer[] = [];
-  let posts: UserPost[] = [];
 
-  console.log("Looking for user with username:", username);
+  // Clean username
+  const cleanUsername = username.trim(); // Handle URL variants?
 
-  try {
-    // First try exact username match
-    let userResult = await sanityFetch({
-      query: userQuery,
-      params: { username: username.trim() },
-    });
+  console.log("Looking for user with username:", cleanUsername);
 
-    // If no exact match, try case-insensitive search
-    if (!userResult.data) {
-      const caseInsensitiveQuery = defineQuery(`
-        *[_type == "user" && lower(username) == lower($username)][0] {
-          _id,
-          clerkId,
-          username,
-          imageUrl,
-          bio,
-          joinedAt,
-          "questionsCount": count(*[_type == "question" && author._ref == ^._id && !isDeleted]),
-          "answersCount": count(*[_type == "answer" && author._ref == ^._id && !isDeleted]),
-          "postsCount": count(*[_type == "post" && author._ref == ^._id && !isDeleted]),
-          "followersCount": count(coalesce(followers, [])),
-          "followingCount": count(coalesce(following, [])),
-          "followers": coalesce(followers, [])[]->{ _id, username, imageUrl },
-          "following": coalesce(following, [])[]->{ _id, username, imageUrl }
-        }
-      `);
+  const user = await getUserProfile(cleanUsername);
+  let questions: any[] = [];
+  let answers: any[] = [];
+  let posts: any[] = [];
 
-      userResult = await sanityFetch({
-        query: caseInsensitiveQuery,
-        params: { username: username.trim() },
-      });
-    }
-
-    console.log("User query result:", userResult.data);
-
-    if (userResult.data) {
-      user = userResult.data;
-
-      console.log("=== FOLLOWERS/FOLLOWING DATA ===");
-      console.log("Followers count:", user?.followersCount);
-      console.log("Following count:", user?.followingCount);
-      console.log("Followers array:", user?.followers);
-      console.log("Following array:", user?.following);
-
-      // Fetch user questions
-      const questionsResult = await sanityFetch({
-        query: userQuestionsQuery,
-        params: { userId: userResult.data._id },
-      });
-      questions = questionsResult.data || [];
-
-      // Fetch user answers
-      const answersResult = await sanityFetch({
-        query: userAnswersQuery,
-        params: { userId: userResult.data._id },
-      });
-      answers = answersResult.data || [];
-
-      // Fetch user posts
-      const postsResult = await sanityFetch({
-        query: userPostsQuery,
-        params: { userId: userResult.data._id },
-      });
-      posts = postsResult.data || [];
-    } else {
-      console.log("No user found for username:", username);
-    }
-  } catch (error) {
-    console.error("Error fetching user data:", error);
+  if (user) {
+    // Parallel fetch for content
+    const [q, a, p] = await Promise.all([
+      getUserQuestions(cleanUsername),
+      getUserAnswers(cleanUsername),
+      getUserPosts(cleanUsername)
+    ]);
+    questions = q;
+    answers = a;
+    posts = p;
   }
 
   if (!user) {

@@ -1,5 +1,3 @@
-import { sanityFetch } from "@/sanity/lib/live";
-import { defineQuery } from "groq";
 import QuestionCard from "@/components/QuestionCard";
 import PostCard from "@/components/PostCard";
 import ModernQuestionCard from "@/components/ModernQuestionCard";
@@ -9,9 +7,17 @@ import CategoriesSidebar from "@/components/CategoriesSidebar";
 import TrendingTopics from "@/components/TrendingTopics";
 import FloatingActionButton from "@/components/FloatingActionButton";
 import MobileHomeFeed from "@/components/MobileHomeFeed";
+import {
+  getHomeQuestions,
+  getHomePosts,
+  getHomeCategories,
+  getHomeCommunities
+} from "@/lib/db/queries";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+// ... interfaces can stay for now or simply infer from return types ...
 
 interface Question {
   _id: string;
@@ -95,97 +101,6 @@ interface Category {
   color?: string;
 }
 
-const homeQuestionsQuery = defineQuery(`
-  *[_type == "question" && !isDeleted] | order(createdAt desc) [0...20] {
-    _id,
-    title,
-    description,
-    author->{
-      username,
-      imageUrl,
-      clerkId
-    },
-    category->{
-      _id,
-      name,
-      color,
-      icon
-    },
-    image{
-      asset->{
-        url
-      },
-      alt
-    },
-    tags,
-    isAnswered,
-    isDeleted,
-    createdAt,
-    "answerCount": count(*[_type == "answer" && references(^._id) && !isDeleted]),
-    "voteCount": 0,
-    "topAnswer": *[_type == "answer" && references(^._id) && !isDeleted] | order(createdAt asc) [0] {
-      _id,
-      content,
-      author->{
-        username,
-        imageUrl,
-        clerkId
-      },
-      createdAt
-    }
-  }
-`);
-
-const homePostsQuery = defineQuery(`
-  *[_type == "post" && !isDeleted] | order(publishedAt desc) [0...10] {
-    _id,
-    postTitle,
-    body,
-    image{
-      "_type": "image",
-      asset->{
-        url,
-        metadata
-      },
-      alt
-    },
-    contentGallery[]{
-      _type,
-      asset->{
-        url
-      },
-      alt,
-      title
-    },
-    author->{
-      username,
-      imageUrl,
-      clerkId
-    },
-    subreddit->{
-      title,
-      slug
-    },
-    category->{
-      name,
-      slug
-    },
-    publishedAt,
-    tags,
-    "commentCount": count(*[_type == "comment" && references(^._id) && !isDeleted])
-  }
-`);
-
-const categoriesQueryHome = defineQuery(`
-  *[_type == "category"] | order(name asc) {
-    _id,
-    name,
-    "slug": slug.current,
-    color
-  }
-`);
-
-
 interface Subreddit {
   _id: string;
   title: string;
@@ -201,66 +116,22 @@ interface Subreddit {
   memberCount?: number;
 }
 
-const homeCommunitiesQuery = defineQuery(`
-  *[_type == "subreddit"] | order(createdAt desc) [0...5] {
-    _id,
-    title,
-    slug,
-    description,
-    image{
-      asset->{
-        url
-      }
-    }
-  }
-`);
-
 export default async function HomePage() {
   let questions: Question[] = [];
   let posts: Post[] = [];
   let categories: Category[] = [];
   let communities: Subreddit[] = [];
-  let loading = false;
+  let loading = false; // Note: with async/await server components, this loading state logic is a bit weird as it blocks.
 
   try {
-    const questionsResult = await sanityFetch({
-      query: homeQuestionsQuery,
-      params: {},
-    });
+    questions = await getHomeQuestions() as any;
+    posts = await getHomePosts() as any;
+    categories = await getHomeCategories() as any;
+    communities = await getHomeCommunities() as any;
 
-    if (questionsResult.data) {
-      questions = questionsResult.data as any;
-    }
-
-    const postsResult = await sanityFetch({
-      query: homePostsQuery,
-      params: {},
-    });
-
-    if (postsResult.data) {
-      posts = postsResult.data as any;
-    }
-
-    const categoriesResult = await sanityFetch({
-      query: categoriesQueryHome,
-      params: {},
-    });
-
-    if (categoriesResult.data) {
-      categories = categoriesResult.data as any;
-    }
-
-    const communitiesResult = await sanityFetch({
-      query: homeCommunitiesQuery,
-      params: {},
-    });
-
-    if (communitiesResult.data) {
-      communities = communitiesResult.data as any;
-    }
   } catch (error) {
     console.error("Error fetching content:", error);
-    loading = true;
+    loading = true; // Error state mostly
   }
 
   if (loading) {
@@ -339,7 +210,7 @@ export default async function HomePage() {
                       communities.map((community) => (
                         <a
                           key={community._id}
-                          href={`/community/${community.slug.current}`}
+                          href={`/communities/${community.slug.current}`}
                           className="flex items-center space-x-2 py-1.5 px-2 hover:bg-accent rounded-md transition-colors"
                         >
                           {community.image?.asset?.url ? (

@@ -1,15 +1,12 @@
 import { NextResponse } from "next/server";
-import { adminClient } from "@/sanity/lib/adminClient";
+import { supabaseAdmin as supabase } from "@/lib/supabase";
 import { auth } from "@clerk/nextjs/server";
+import { createNotification } from "@/lib/notifications";
 
 export async function POST(request: Request) {
     try {
         const body = await request.json();
         const { targetUserId, action } = body;
-
-        console.log("=== FOLLOW API ===");
-        console.log("Target User ID (Sanity):", targetUserId);
-        console.log("Action:", action);
 
         if (!targetUserId || !action) {
             return NextResponse.json(
@@ -28,38 +25,18 @@ export async function POST(request: Request) {
             );
         }
 
-        console.log("Clerk User ID:", clerkUserId);
+        // Get current user's Supabase ID
+        const { data: currentUser, error: userError } = await supabase
+            .from('users')
+            .select('id')
+            .eq('clerk_id', clerkUserId)
+            .single();
 
-        // Find current user in Sanity by Clerk ID
-        const currentUser = await adminClient.fetch(
-            `*[_type == "user" && clerkId == $userId][0]`,
-            { userId: clerkUserId }
-        );
-
-        // Get target user
-        const targetUser = await adminClient.fetch(
-            `*[_type == "user" && _id == $targetUserId][0]`,
-            { targetUserId }
-        );
-
-        console.log("Current user found:", currentUser ? currentUser.username : "NOT FOUND");
-        console.log("Target user found:", targetUser ? targetUser.username : "NOT FOUND");
-
-        if (!currentUser || !targetUser) {
-            console.log("❌ User lookup failed");
-            return NextResponse.json(
-                { error: "User not found" },
-                { status: 404 }
-            );
+        if (userError || !currentUser) {
+            return NextResponse.json({ error: "User not found" }, { status: 404 });
         }
 
-        const currentSanityId = currentUser._id;
-        const targetSanityId = targetUser._id;
-
-        console.log("Current Sanity ID:", currentSanityId);
-        console.log("Target Sanity ID:", targetSanityId);
-
-        if (currentSanityId === targetSanityId) {
+        if (currentUser.id === targetUserId) {
             return NextResponse.json(
                 { error: "You cannot follow yourself" },
                 { status: 400 }
@@ -67,93 +44,55 @@ export async function POST(request: Request) {
         }
 
         if (action === "follow") {
-            console.log("✓ Following user...");
+            // Check if already following to prevent duplicate error
+            const { data: existing } = await supabase
+                .from('followers')
+                .select('*')
+                .eq('follower_id', currentUser.id)
+                .eq('following_id', targetUserId)
+                .single();
 
-            // Add target to current user's following
-            console.log("Step 1: Adding to current user's following array...");
-            const followingUpdate = await adminClient
-                .patch(currentSanityId)
-                .setIfMissing({ following: [] })
-                .append("following", [
-                    {
-                        _type: "reference",
-                        _ref: targetSanityId,
-                        _key: targetSanityId,
-                    },
-                ])
-                .commit();
-
-            console.log("Following update result:", followingUpdate);
-
-            // Add current user to target's followers
-            console.log("Step 2: Adding to target user's followers array...");
-            const followersUpdate = await adminClient
-                .patch(targetSanityId)
-                .setIfMissing({ followers: [] })
-                .append("followers", [
-                    {
-                        _type: "reference",
-                        _ref: currentSanityId,
-                        _key: currentSanityId,
-                    },
-                ])
-                .commit();
-
-            console.log("Followers update result:", followersUpdate);
-
-            console.log("✓ Follow successful - both arrays updated");
-
-            // Verify the update
-            const verifyUser = await adminClient.fetch(
-                `*[_type == "user" && _id == $userId][0]{ _id, username, following }`,
-                { userId: currentSanityId }
-            );
-            console.log("Verification - Current user following array:", verifyUser?.following);
-
-            // Create notification for the target user
-            try {
-                await adminClient.create({
-                    _type: "notification",
-                    type: "follow",
-                    recipient: {
-                        _type: "reference",
-                        _ref: targetSanityId,
-                    },
-                    sender: {
-                        _type: "reference",
-                        _ref: currentSanityId,
-                    },
-                    read: false,
-                    createdAt: new Date().toISOString(),
-                });
-                console.log("✓ Notification created");
-            } catch (notifError) {
-                console.error("Failed to create notification:", notifError);
-                // Don't fail the request if notification creation fails
+            if (existing) {
+                return NextResponse.json({ success: true });
             }
 
+            const { error: followError } = await supabase
+                .from('followers')
+                .insert({
+                    follower_id: currentUser.id,
+                    following_id: targetUserId
+                });
+
+            if (followError) {
+                console.error("Follow insert error:", followError);
+                return NextResponse.json({ error: "Failed to follow: " + followError.message }, { status: 500 });
+            }
+
+            // Create notification
+            await createNotification({
+                recipientId: targetUserId,
+                senderId: currentUser.id,
+                type: 'follow'
+            });
+
         } else if (action === "unfollow") {
-            console.log("✓ Unfollowing user...");
-            // Remove target from current user's following
-            await adminClient
-                .patch(currentSanityId)
-                .unset([`following[_ref=="${targetSanityId}"]`])
-                .commit();
+            const { error: unfollowError } = await supabase
+                .from('followers')
+                .delete()
+                .eq('follower_id', currentUser.id)
+                .eq('following_id', targetUserId);
 
-            // Remove current user from target's followers
-            await adminClient
-                .patch(targetSanityId)
-                .unset([`followers[_ref=="${currentSanityId}"]`])
-                .commit();
-
-            console.log("✓ Unfollow successful");
+            if (unfollowError) {
+                console.error("Unfollow error:", unfollowError);
+                return NextResponse.json({ error: "Failed to unfollow: " + unfollowError.message }, { status: 500 });
+            }
         }
 
         return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error("❌ Error managing follow:", error);
+    } catch (error: any) {
+        console.error("Error managing follow:", error);
         return NextResponse.json(
-            { error: "Failed to manage follow" },
+            { error: error.message || "Failed to manage follow" },
             { status: 500 }
         );
     }
@@ -168,23 +107,27 @@ export async function GET(request: Request) {
             return NextResponse.json({ isFollowing: false });
         }
 
-        // Get current user from Clerk
         const { userId: clerkUserId } = await auth();
-
         if (!clerkUserId) {
             return NextResponse.json({ isFollowing: false });
         }
 
-        const user = await adminClient.fetch(
-            `*[_type == "user" && clerkId == $userId][0]{ following }`,
-            { userId: clerkUserId }
-        );
+        const { data: currentUser } = await supabase
+            .from('users')
+            .select('id')
+            .eq('clerk_id', clerkUserId)
+            .single();
 
-        const isFollowing = user?.following?.some(
-            (ref: any) => ref._ref === targetId
-        ) || false;
+        if (!currentUser) return NextResponse.json({ isFollowing: false });
 
-        return NextResponse.json({ isFollowing });
+        const { count, error } = await supabase
+            .from('followers')
+            .select('*', { count: 'exact', head: true })
+            .eq('follower_id', currentUser.id)
+            .eq('following_id', targetId);
+
+        return NextResponse.json({ isFollowing: !!count && count > 0 });
+
     } catch (error) {
         console.error("Error checking follow status:", error);
         return NextResponse.json({ isFollowing: false });

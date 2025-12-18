@@ -1,5 +1,6 @@
+
 import { NextRequest, NextResponse } from "next/server";
-import { adminClient } from "@/sanity/lib/adminClient";
+import { supabase } from "@/lib/supabase";
 
 export async function GET(
   request: NextRequest,
@@ -15,24 +16,46 @@ export async function GET(
       );
     }
 
-    // Fetch user from Sanity by _id or clerkId
-    const user = await adminClient.fetch(
-      `*[_type == "user" && (_id == $userId || clerkId == $userId)][0] {
-        _id,
-        username,
-        email,
-        imageUrl,
-        bio,
-        joinedAt
-      }`,
-      { userId },
-    );
+    // Determine if we search by clerk_id or internal uuid
+    let query = supabase.from('users').select('*');
 
-    if (!user) {
+    // Clerk IDs usually start with 'user_'
+    // UUIDs are 36 chars with dashes.
+
+    if (userId.startsWith('user_')) {
+      query = query.eq('clerk_id', userId);
+    } else {
+      // Try as UUID
+      // Simple check or try-catch
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (uuidRegex.test(userId)) {
+        query = query.eq('id', userId);
+      } else {
+        // Fallback: maybe it's a username query disguised as ID? 
+        // Logic in Sanity was _id or clerkId.
+        // If not UUID and not ClerkID, probably won't match either in strict sense.
+        // Let's just try clerkId to be safe to avoid UUID casting errors
+        query = query.eq('clerk_id', userId);
+      }
+    }
+
+    const { data: user, error } = await query.single();
+
+    if (error || !user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    return NextResponse.json(user);
+    // Map to response format if expected
+    return NextResponse.json({
+      _id: user.id,
+      username: user.username,
+      email: user.email,
+      imageUrl: user.image_url,
+      bio: user.bio,
+      joinedAt: user.joined_at,
+      clerkId: user.clerk_id
+    });
+
   } catch (error) {
     console.error("Error fetching user:", error);
     return NextResponse.json(

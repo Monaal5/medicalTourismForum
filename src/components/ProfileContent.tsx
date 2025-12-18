@@ -17,6 +17,13 @@ import {
   PenTool,
   MoreHorizontal,
   ThumbsUp,
+  Twitter,
+  Linkedin,
+  Facebook,
+  Instagram,
+  Globe,
+  Link as LinkIcon,
+  Award
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -46,6 +53,20 @@ interface UserProfile {
   employment?: string | null;
   education?: string | null;
   location?: string | null;
+  socialLinks?: {
+    twitter?: string;
+    linkedin?: string;
+    instagram?: string;
+    facebook?: string;
+    website?: string;
+  };
+  reputation?: number;
+  badges?: Array<{
+    name: string;
+    iconUrl: string | null;
+    description: string | null;
+    awardedAt: string;
+  }>;
 }
 
 interface UserQuestion {
@@ -120,6 +141,13 @@ export default function ProfileContent({
     employment: user.employment || "",
     education: user.education || "",
     location: user.location || "",
+    socialLinks: user.socialLinks || {
+      twitter: "",
+      linkedin: "",
+      instagram: "",
+      facebook: "",
+      website: ""
+    }
   });
   const [credentialForm, setCredentialForm] = useState(displayCredentials);
   const [isCredentialsOpen, setIsCredentialsOpen] = useState(false);
@@ -261,8 +289,9 @@ export default function ProfileContent({
       if (!response.ok) {
         // Revert on error
         setIsFollowing(isFollowing);
-        toast.error(responseData.error || "Failed to update follow status");
-        console.error("Follow failed:", responseData);
+        const errorMessage = responseData.error || "Failed to update follow status";
+        toast.error(errorMessage);
+        console.error("Follow failed:", errorMessage);
       } else {
         toast.success(action === "follow" ? `Following ${user.username}` : `Unfollowed ${user.username}`);
         console.log("✓ Follow successful");
@@ -315,39 +344,150 @@ export default function ProfileContent({
           <DialogHeader>
             <DialogTitle>Edit Credentials & Highlights</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="employment">Employment</Label>
-              <Input
-                id="employment"
-                placeholder="Position at Company"
-                value={credentialForm.employment}
-                onChange={(e) =>
-                  setCredentialForm({ ...credentialForm, employment: e.target.value })
-                }
-              />
+          <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto px-1">
+            <div className="space-y-4">
+              <h3 className="font-medium text-gray-900 border-b pb-2">Professional Info</h3>
+              <div className="space-y-2">
+                <Label htmlFor="employment">Employment</Label>
+                <div className="relative">
+                  <Briefcase className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                  <Input
+                    id="employment"
+                    placeholder="Position at Company"
+                    className="pl-9"
+                    value={credentialForm.employment}
+                    onChange={(e) =>
+                      setCredentialForm({ ...credentialForm, employment: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="education">Education</Label>
+                <div className="relative">
+                  <GraduationCap className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                  <Input
+                    id="education"
+                    placeholder="School or University"
+                    className="pl-9"
+                    value={credentialForm.education}
+                    onChange={(e) =>
+                      setCredentialForm({ ...credentialForm, education: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="location">Location</Label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                  <Input
+                    id="location"
+                    placeholder="City, Country"
+                    className="pl-9"
+                    value={credentialForm.location}
+                    onChange={(e) =>
+                      setCredentialForm({ ...credentialForm, location: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="education">Education</Label>
-              <Input
-                id="education"
-                placeholder="School or University"
-                value={credentialForm.education}
-                onChange={(e) =>
-                  setCredentialForm({ ...credentialForm, education: e.target.value })
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="location">Location</Label>
-              <Input
-                id="location"
-                placeholder="City, Country"
-                value={credentialForm.location}
-                onChange={(e) =>
-                  setCredentialForm({ ...credentialForm, location: e.target.value })
-                }
-              />
+
+            <div className="space-y-4 pt-4">
+              <h3 className="font-medium text-gray-900 border-b pb-2">Social Profiles</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="website">Website</Label>
+                  <div className="relative">
+                    <Globe className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                    <Input
+                      id="website"
+                      placeholder="https://yourwebsite.com"
+                      className="pl-9"
+                      value={credentialForm.socialLinks?.website || ""}
+                      onChange={(e) =>
+                        setCredentialForm({
+                          ...credentialForm,
+                          socialLinks: { ...credentialForm.socialLinks, website: e.target.value }
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="twitter">Twitter / X</Label>
+                  <div className="relative">
+                    <Twitter className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                    <Input
+                      id="twitter"
+                      placeholder="Twitter URL"
+                      className="pl-9"
+                      value={credentialForm.socialLinks?.twitter || ""}
+                      onChange={(e) =>
+                        setCredentialForm({
+                          ...credentialForm,
+                          socialLinks: { ...credentialForm.socialLinks, twitter: e.target.value }
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="linkedin">LinkedIn</Label>
+                  <div className="relative">
+                    <Linkedin className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                    <Input
+                      id="linkedin"
+                      placeholder="LinkedIn URL"
+                      className="pl-9"
+                      value={credentialForm.socialLinks?.linkedin || ""}
+                      onChange={(e) =>
+                        setCredentialForm({
+                          ...credentialForm,
+                          socialLinks: { ...credentialForm.socialLinks, linkedin: e.target.value }
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="instagram">Instagram</Label>
+                  <div className="relative">
+                    <Instagram className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                    <Input
+                      id="instagram"
+                      placeholder="Instagram URL"
+                      className="pl-9"
+                      value={credentialForm.socialLinks?.instagram || ""}
+                      onChange={(e) =>
+                        setCredentialForm({
+                          ...credentialForm,
+                          socialLinks: { ...credentialForm.socialLinks, instagram: e.target.value }
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="facebook">Facebook</Label>
+                  <div className="relative">
+                    <Facebook className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                    <Input
+                      id="facebook"
+                      placeholder="Facebook URL"
+                      className="pl-9"
+                      value={credentialForm.socialLinks?.facebook || ""}
+                      onChange={(e) =>
+                        setCredentialForm({
+                          ...credentialForm,
+                          socialLinks: { ...credentialForm.socialLinks, facebook: e.target.value }
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -391,6 +531,7 @@ export default function ProfileContent({
             </div>
 
             {/* Name & Role */}
+            {/* Name & Role */}
             <div className="text-center mb-6">
               <h2 className="text-xl font-bold text-gray-900 mb-1">{user.username}</h2>
               {isEditingBio ? (
@@ -423,24 +564,105 @@ export default function ProfileContent({
                   </div>
                 </div>
               ) : (
-                <p className="text-gray-500 text-sm mb-2">{displayBio || "Community Member"}</p>
+                <div className="relative inline-block max-w-md mx-auto mb-2 px-4">
+                  <p className="text-gray-500 text-sm whitespace-pre-wrap">{displayBio || "Community Member"}</p>
+                  {isProfileOwner && (
+                    <button
+                      onClick={() => setIsEditingBio(true)}
+                      className="absolute -right-4 top-0 p-1 text-gray-400 hover:text-blue-600"
+                    >
+                      <Edit3 className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
               )}
-              <div className="flex items-center justify-center space-x-1 text-green-600 bg-green-50 inline-flex px-3 py-1 rounded-full mx-auto">
-                <CheckCircle className="w-3 h-3 fill-current" />
-                <span className="text-xs font-medium">Verified Professional</span>
+
+              <div className="flex items-center justify-center">
+                <div className="flex items-center space-x-1 text-green-600 bg-green-50 inline-flex px-3 py-1 rounded-full mb-4">
+                  <CheckCircle className="w-3 h-3 fill-current" />
+                  <span className="text-xs font-medium">Verified Professional</span>
+                </div>
               </div>
+
+              {/* Mobile Badges & Rep */}
+              <div className="flex flex-col items-center justify-center mb-6 space-y-2">
+                <div className="flex items-center space-x-2 text-yellow-600 bg-yellow-50 px-3 py-1 rounded-full border border-yellow-100">
+                  <Award className="w-4 h-4" />
+                  <span className="font-semibold">{user.reputation || 0} Reputation</span>
+                </div>
+                {user.badges && user.badges.length > 0 && (
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {user.badges.map((badge, idx) => (
+                      <div key={idx} className="flex items-center space-x-1 bg-purple-50 text-purple-700 px-2 py-1 rounded text-xs border border-purple-100" title={badge.description || badge.name}>
+                        <span>{badge.iconUrl || '🏅'}</span>
+                        <span>{badge.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Mobile Credentials */}
+              <div className="flex flex-wrap justify-center gap-2 mb-4 px-2">
+                {displayCredentials.employment && (
+                  <div className="flex items-center text-xs text-gray-700 bg-gray-50 px-2 py-1 rounded border border-gray-100">
+                    <Briefcase className="w-3 h-3 mr-1 text-gray-500" />
+                    <span>{displayCredentials.employment}</span>
+                  </div>
+                )}
+                {displayCredentials.education && (
+                  <div className="flex items-center text-xs text-gray-700 bg-gray-50 px-2 py-1 rounded border border-gray-100">
+                    <GraduationCap className="w-3 h-3 mr-1 text-gray-500" />
+                    <span>{displayCredentials.education}</span>
+                  </div>
+                )}
+                {displayCredentials.location && (
+                  <div className="flex items-center text-xs text-gray-700 bg-gray-50 px-2 py-1 rounded border border-gray-100">
+                    <MapPin className="w-3 h-3 mr-1 text-gray-500" />
+                    <span>{displayCredentials.location}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Mobile Socials */}
+              {displayCredentials.socialLinks && Object.values(displayCredentials.socialLinks).some(v => v) && (
+                <div className="flex justify-center gap-4 mb-6">
+                  {displayCredentials.socialLinks.twitter && (
+                    <a href={displayCredentials.socialLinks.twitter} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-blue-400 p-2 bg-gray-50 rounded-full">
+                      <Twitter className="w-4 h-4" />
+                    </a>
+                  )}
+                  {displayCredentials.socialLinks.linkedin && (
+                    <a href={displayCredentials.socialLinks.linkedin} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-blue-700 p-2 bg-gray-50 rounded-full">
+                      <Linkedin className="w-4 h-4" />
+                    </a>
+                  )}
+                  {displayCredentials.socialLinks.facebook && (
+                    <a href={displayCredentials.socialLinks.facebook} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-blue-600 p-2 bg-gray-50 rounded-full">
+                      <Facebook className="w-4 h-4" />
+                    </a>
+                  )}
+                  {displayCredentials.socialLinks.instagram && (
+                    <a href={displayCredentials.socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-pink-600 p-2 bg-gray-50 rounded-full">
+                      <Instagram className="w-4 h-4" />
+                    </a>
+                  )}
+                  {displayCredentials.socialLinks.website && (
+                    <a href={displayCredentials.socialLinks.website} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-gray-800 p-2 bg-gray-50 rounded-full">
+                      <Globe className="w-4 h-4" />
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Action Buttons */}
             <div className="flex gap-3 mb-6">
               {isProfileOwner ? (
                 <Button
-                  onClick={() => {
-                    setBioText(displayBio || "");
-                    setIsEditingBio(true);
-                  }}
+                  onClick={() => setIsCredentialsOpen(true)}
                   className="flex-1 bg-blue-600 text-white rounded-xl py-6 text-base font-medium shadow-blue-200 shadow-lg hover:bg-blue-700">
-                  Edit Profile
+                  Edit Details
                 </Button>
               ) : (
                 <Button
@@ -623,144 +845,218 @@ export default function ProfileContent({
         <div className="hidden md:block max-w-7xl mx-auto px-4 py-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Main Content */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-3">
               {/* Profile Header */}
-              <div className="mb-6">
-                <div className="flex items-start space-x-6">
-                  <div className="relative">
+              <div className="mb-6 bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                <div className="flex flex-col md:flex-row items-start space-y-4 md:space-y-0 md:space-x-6">
+                  {/* Avatar */}
+                  <div className="relative flex-shrink-0">
                     {user.imageUrl ? (
                       <Image
                         src={user.imageUrl}
                         alt={user.username || "User avatar"}
                         width={120}
                         height={120}
-                        className="w-32 h-32 rounded-full object-cover"
+                        className="w-32 h-32 rounded-full object-cover border-4 border-gray-100 shadow-sm"
                         unoptimized
                       />
                     ) : (
-                      <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center">
+                      <div className="w-32 h-32 rounded-full bg-gray-100 flex items-center justify-center border-4 border-gray-50">
                         <User className="w-16 h-16 text-gray-400" />
                       </div>
                     )}
                   </div>
 
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3 mb-2">
-                      <h1 className="text-3xl font-bold text-gray-900">
-                        {user.username}
-                      </h1>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-gray-600 hover:text-gray-800"
-                        suppressHydrationWarning
-                      >
-                        <Share2 className="w-4 h-4" />
-                      </Button>
+                  {/* Info Column */}
+                  <div className="flex-1 w-full">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-3">
+                        <h1 className="text-3xl font-bold text-gray-900">
+                          {user.username}
+                        </h1>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-gray-400 hover:text-gray-600"
+                          suppressHydrationWarning
+                        >
+                          <Share2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+
+                      {/* Action Buttons (Desktop) */}
+                      <div className="hidden md:flex items-center space-x-2">
+                        {isProfileOwner ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setIsCredentialsOpen(true)}
+                            className="flex items-center space-x-2"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                            <span>Edit Profile</span>
+                          </Button>
+                        ) : (
+                          <Button
+                            onClick={toggleFollow}
+                            disabled={followLoading || checkingFollow}
+                            size="sm"
+                            className={`${isFollowing
+                              ? "bg-gray-100 text-gray-900 hover:bg-gray-200"
+                              : "bg-blue-600 text-white hover:bg-blue-700"
+                              }`}
+                          >
+                            {followLoading ? (
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : isFollowing ? (
+                              <UserMinus className="w-4 h-4 mr-2" />
+                            ) : (
+                              <UserPlus className="w-4 h-4 mr-2" />
+                            )}
+                            {isFollowing ? "Unfollow" : "Follow"}
+                          </Button>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="flex items-center space-x-2 mb-3">
-                      <span className="text-sm text-gray-600">
-                        {user.followersCount || 0} followers • {user.followingCount || 0} following
+                    <div className="flex items-center space-x-4 mb-4 text-sm text-gray-600">
+                      <span>
+                        <strong className="text-gray-900">{user.followersCount || 0}</strong> followers
+                      </span>
+                      <span>
+                        <strong className="text-gray-900">{user.followingCount || 0}</strong> following
+                      </span>
+                      <span className="flex items-center">
+                        <Calendar className="w-3.5 h-3.5 mr-1" />
+                        Joined {user.joinedAt ? new Date(user.joinedAt).toLocaleDateString() : "recently"}
                       </span>
                     </div>
 
+                    {/* Desktop Badges & Rep */}
+                    <div className="flex items-center space-x-4 mb-4">
+                      <div className="flex items-center space-x-1.5 text-yellow-700 bg-yellow-50 px-3 py-1.5 rounded-full border border-yellow-200">
+                        <Award className="w-4 h-4" />
+                        <span className="font-bold text-sm">{user.reputation || 0} Reputation</span>
+                      </div>
+                      {user.badges && user.badges.map((badge, idx) => (
+                        <div key={idx} className="flex items-center space-x-1 bg-purple-50 text-purple-700 px-2.5 py-1 rounded-full text-xs font-medium border border-purple-100" title={badge.description || badge.name}>
+                          <span>{badge.iconUrl || '🏅'}</span>
+                          <span>{badge.name}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Bio Section */}
                     {isEditingBio ? (
-                      <div className="mb-4 space-y-3">
+                      <div className="mb-4 space-y-3 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <div className="flex justify-between items-center mb-1">
+                          <label className="text-sm font-medium text-gray-700">About You</label>
+                        </div>
                         <Textarea
                           value={bioText}
                           onChange={(e) => setBioText(e.target.value)}
                           placeholder="Tell us about yourself..."
-                          className="min-h-[100px]"
+                          className="min-h-[100px] bg-white"
                         />
-                        <div className="flex space-x-2">
+                        <div className="flex justify-end space-x-2">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setIsEditingBio(false);
+                              setBioText(displayBio || "");
+                            }}
+                            disabled={isSavingBio}
+                          >
+                            Cancel
+                          </Button>
                           <Button
                             size="sm"
                             onClick={handleSaveBio}
                             disabled={isSavingBio}
                             className="bg-blue-600 text-white"
                           >
-                            {isSavingBio ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                            Save
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setIsEditingBio(false)}
-                            disabled={isSavingBio}
-                          >
-                            <X className="w-4 h-4 mr-2" />
-                            Cancel
+                            {isSavingBio && <Loader2 className="w-3 h-3 mr-2 animate-spin" />}
+                            Save Bio
                           </Button>
                         </div>
                       </div>
                     ) : (
-                      <div className="mb-4 group relative">
+                      <div className="mb-4 relative group">
                         {displayBio ? (
-                          <p className="text-gray-700">{displayBio}</p>
-                        ) : (
-                          isProfileOwner ? (
-                            <div
-                              onClick={() => setIsEditingBio(true)}
-                              className="bg-gray-50 border border-gray-200 border-dashed rounded-lg p-4 cursor-pointer hover:bg-gray-100 transition-colors"
-                            >
-                              <p className="text-gray-500 text-sm flex items-center justify-center">
-                                <Edit3 className="w-4 h-4 mr-2" />
-                                Write a description about yourself
-                              </p>
-                            </div>
-                          ) : (
-                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                              <p className="text-gray-500 text-sm">
-                                No description provided.
-                              </p>
-                            </div>
-                          )
-                        )}
-                        {isProfileOwner && displayBio && (
+                          <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">{displayBio}</p>
+                        ) : isProfileOwner ? (
+                          <p className="text-gray-400 italic cursor-pointer hover:text-gray-600 transition-colors" onClick={() => setIsEditingBio(true)}>
+                            Add a bio to tell people about yourself...
+                          </p>
+                        ) : null}
+
+                        {isProfileOwner && !isEditingBio && (
                           <button
-                            onClick={() => {
-                              setBioText(displayBio || "");
-                              setIsEditingBio(true);
-                            }}
-                            className="absolute -right-2 -top-2 p-1.5 bg-gray-100 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-200"
+                            onClick={() => setIsEditingBio(true)}
+                            className="absolute -right-6 top-0 opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-blue-600 transition-all"
+                            title="Edit Bio"
                           >
-                            <Edit3 className="w-3 h-3 text-gray-600" />
+                            <Edit3 className="w-3.5 h-3.5" />
                           </button>
                         )}
                       </div>
                     )}
 
-                    <div className="flex space-x-3">
-                      {isProfileOwner ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-blue-600 text-blue-600 hover:bg-blue-50"
-                          suppressHydrationWarning
-                        >
-                          Add profile credential
-                        </Button>
-                      ) : (
-                        <Button
-                          onClick={toggleFollow}
-                          disabled={followLoading || checkingFollow}
-                          className={`${isFollowing
-                            ? "bg-gray-100 text-gray-900 hover:bg-gray-200"
-                            : "bg-blue-600 text-white hover:bg-blue-700"
-                            }`}
-                        >
-                          {followLoading ? (
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          ) : isFollowing ? (
-                            <UserMinus className="w-4 h-4 mr-2" />
-                          ) : (
-                            <UserPlus className="w-4 h-4 mr-2" />
-                          )}
-                          {isFollowing ? "Unfollow" : "Follow"}
-                        </Button>
+                    {/* Credentials & Socials Line */}
+                    <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                      {displayCredentials.employment && (
+                        <div className="flex items-center text-gray-700 bg-gray-50 px-2 py-1 rounded">
+                          <Briefcase className="w-3.5 h-3.5 mr-2 text-gray-500" />
+                          <span>{displayCredentials.employment}</span>
+                        </div>
+                      )}
+
+                      {displayCredentials.education && (
+                        <div className="flex items-center text-gray-700 bg-gray-50 px-2 py-1 rounded">
+                          <GraduationCap className="w-3.5 h-3.5 mr-2 text-gray-500" />
+                          <span>{displayCredentials.education}</span>
+                        </div>
+                      )}
+
+                      {displayCredentials.location && (
+                        <div className="flex items-center text-gray-700 bg-gray-50 px-2 py-1 rounded">
+                          <MapPin className="w-3.5 h-3.5 mr-2 text-gray-500" />
+                          <span>{displayCredentials.location}</span>
+                        </div>
                       )}
                     </div>
+
+                    {/* Social Links */}
+                    {displayCredentials.socialLinks && Object.values(displayCredentials.socialLinks).some(v => v) && (
+                      <div className="flex items-center gap-3 mt-3 pt-3 border-t border-gray-100">
+                        {displayCredentials.socialLinks.twitter && (
+                          <a href={displayCredentials.socialLinks.twitter} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-blue-400 transition-colors">
+                            <Twitter className="w-4 h-4" />
+                          </a>
+                        )}
+                        {displayCredentials.socialLinks.linkedin && (
+                          <a href={displayCredentials.socialLinks.linkedin} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-blue-700 transition-colors">
+                            <Linkedin className="w-4 h-4" />
+                          </a>
+                        )}
+                        {displayCredentials.socialLinks.facebook && (
+                          <a href={displayCredentials.socialLinks.facebook} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-blue-600 transition-colors">
+                            <Facebook className="w-4 h-4" />
+                          </a>
+                        )}
+                        {displayCredentials.socialLinks.instagram && (
+                          <a href={displayCredentials.socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-pink-600 transition-colors">
+                            <Instagram className="w-4 h-4" />
+                          </a>
+                        )}
+                        {displayCredentials.socialLinks.website && (
+                          <a href={displayCredentials.socialLinks.website} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-gray-800 transition-colors">
+                            <Globe className="w-4 h-4" />
+                          </a>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -979,9 +1275,13 @@ export default function ProfileContent({
                             </Link>
                             {post.body && (
                               <p className="text-gray-600 mb-3 line-clamp-3">
-                                {post.body.map((block: any) =>
-                                  block.children?.map((child: any) => child.text).join('')
-                                ).join(' ')}
+                                {Array.isArray(post.body)
+                                  ? post.body.map((block: any) =>
+                                    block.children?.map((child: any) => child.text).join('')
+                                  ).join(' ')
+                                  : typeof post.body === 'object' && (post.body as any).content
+                                    ? String((post.body as any).content).replace(/<[^>]*>?/gm, '')
+                                    : ''}
                               </p>
                             )}
                             <div className="flex items-center justify-between">
@@ -1100,109 +1400,7 @@ export default function ProfileContent({
               </div>
             </div>
 
-            {/* Sidebar */}
-            <div className="lg:col-span-1">
-              <div className="space-y-6">
-                {/* Credentials & Highlights */}
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      Credentials & Highlights
-                    </h3>
-                    {isProfileOwner && (
-                      <Button variant="ghost" size="sm" onClick={() => setIsCredentialsOpen(true)}>
-                        <Edit3 className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                  <div className="space-y-3">
-                    {displayCredentials.employment ? (
-                      <div className="flex items-center text-gray-700">
-                        <Briefcase className="w-4 h-4 mr-3 text-gray-500" />
-                        <span>{displayCredentials.employment}</span>
-                      </div>
-                    ) : isProfileOwner ? (
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start text-gray-600 hover:text-gray-800"
-                        onClick={() => setIsCredentialsOpen(true)}
-                      >
-                        <Briefcase className="w-4 h-4 mr-3" />
-                        Add employment credential
-                      </Button>
-                    ) : null}
-
-                    {displayCredentials.education ? (
-                      <div className="flex items-center text-gray-700">
-                        <GraduationCap className="w-4 h-4 mr-3 text-gray-500" />
-                        <span>{displayCredentials.education}</span>
-                      </div>
-                    ) : isProfileOwner ? (
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start text-gray-600 hover:text-gray-800"
-                        onClick={() => setIsCredentialsOpen(true)}
-                      >
-                        <GraduationCap className="w-4 h-4 mr-3" />
-                        Add education credential
-                      </Button>
-                    ) : null}
-
-                    {displayCredentials.location ? (
-                      <div className="flex items-center text-gray-700">
-                        <MapPin className="w-4 h-4 mr-3 text-gray-500" />
-                        <span>{displayCredentials.location}</span>
-                      </div>
-                    ) : isProfileOwner ? (
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start text-gray-600 hover:text-gray-800"
-                        onClick={() => setIsCredentialsOpen(true)}
-                      >
-                        <MapPin className="w-4 h-4 mr-3" />
-                        Add location credential
-                      </Button>
-                    ) : null}
-
-                    <div className="flex items-center text-sm text-gray-500 pt-2 border-t border-gray-100">
-                      <Calendar className="w-4 h-4 mr-3" />
-                      <span>
-                        Joined{" "}
-                        {user.joinedAt
-                          ? new Date(user.joinedAt).toLocaleDateString("en-US", {
-                            month: "long",
-                            year: "numeric",
-                          })
-                          : "Recently"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Knows About */}
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      Knows about
-                    </h3>
-                    <Button variant="ghost" size="sm">
-                      <Edit3 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  <div className="text-center py-8">
-                    <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-4">
-                      <Users className="w-8 h-8 text-gray-400" />
-                    </div>
-                    <p className="text-gray-500 text-sm mb-4">
-                      You haven't added any topics yet.
-                    </p>
-                    <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                      Add topics
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            {/* Sidebar removed */}
           </div>
         </div>
       </div>

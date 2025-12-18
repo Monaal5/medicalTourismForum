@@ -1,0 +1,173 @@
+
+> medical-forum@0.1.0 build
+> next build
+
+   ▲ Next.js 16.0.7 (Turbopack)
+   - Environments: .env.local
+   - Experiments (use with caution):
+     · optimizePackageImports
+
+ ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 26.1s
+   Running TypeScript ...
+   Collecting page data using 11 workers ...
+✅ Supabase Service Key loaded.
+✅ Supabase Service Key loaded.
+✅ Supabase Service Key loaded.
+✅ Supabase Service Key loaded.
+✅ Supabase Service Key loaded.
+✅ Supabase Service Key loaded.
+✅ Supabase Service Key loaded.
+✅ Supabase Service Key loaded.
+✅ Supabase Service Key loaded.
+✅ Supabase Service Key loaded.
+✅ Supabase Service Key loaded.
+✅ Supabase Service Key loaded.
+✅ Supabase Service Key loaded.
+✅ Supabase Service Key loaded.
+✅ Supabase Service Key loaded.
+✅ Supabase Service Key loaded.
+✅ Supabase Service Key loaded.
+✅ Supabase Service Key loaded.
+✅ Supabase Service Key loaded.
+✅ Supabase Service Key loaded.
+✅ Supabase Service Key loaded.
+✅ Supabase Service Key loaded.
+   Generating static pages using 11 workers (0/84) ...
+✅ Supabase Service Key loaded.
+✅ Supabase Service Key loaded.
+   Generating static pages using 11 workers (21/84) 
+   Generating static pages using 11 workers (42/84) 
+✅ Supabase Service Key loaded.
+✅ Supabase Service Key loaded.
+   Generating static pages using 11 workers (63/84) 
+✅ Supabase Service Key loaded.
+ ✓ Generating static pages using 11 workers (84/84) in 3.7s
+   Finalizing page optimization ...
+
+Route (app)                           Revalidate  Expire
+┌ ƒ /
+├ ○ /_not-found
+├ ○ /about
+├ ○ /acceptable-use
+├ ○ /ad-choices
+├ ƒ /admin
+├ ƒ /admin/categories
+├ ƒ /admin/categories/new
+├ ƒ /admin/communities
+├ ƒ /admin/events
+├ ƒ /admin/events/new
+├ ƒ /admin/manage-access
+├ ƒ /admin/polls
+├ ƒ /admin/polls/new
+├ ƒ /admin/posts
+├ ƒ /admin/questions
+├ ƒ /admin/reports
+├ ƒ /admin/users
+├ ○ /advertise
+├ ○ /answer
+├ ƒ /api/admin/automod
+├ ƒ /api/admin/chat
+├ ƒ /api/admin/delete-all-content
+├ ƒ /api/admin/delete-communities
+├ ƒ /api/admin/reports
+├ ƒ /api/admin/reports/action
+├ ƒ /api/ai/suggest-tags
+├ ƒ /api/answers
+├ ƒ /api/answers/[answerId]
+├ ƒ /api/bookmarks
+├ ƒ /api/categories
+├ ƒ /api/categories/[slug]
+├ ƒ /api/categories/[slug]/polls
+├ ƒ /api/categories/[slug]/posts
+├ ƒ /api/categories/[slug]/questions
+├ ƒ /api/comments
+├ ƒ /api/comments/[commentId]
+├ ƒ /api/communities
+├ ƒ /api/communities/[id]
+├ ƒ /api/debug-user
+├ ƒ /api/debug-username
+├ ƒ /api/fix-my-username
+├ ƒ /api/fix-user
+├ ƒ /api/fix-username-by-name
+├ ƒ /api/follow
+├ ƒ /api/get-current-user
+├ ƒ /api/migrate-users
+├ ƒ /api/newsletter
+├ ƒ /api/notifications
+├ ƒ /api/notifications/mark-all-read
+├ ƒ /api/notifications/unread-count
+├ ƒ /api/polls
+├ ƒ /api/polls/[id]
+├ ƒ /api/polls/[id]/vote
+├ ƒ /api/polls/vote
+├ ƒ /api/posts
+├ ƒ /api/posts/[postId]
+├ ƒ /api/posts/[postId]/view
+├ ƒ /api/questions
+├ ƒ /api/questions/[questionId]
+├ ƒ /api/questions/[questionId]/view
+├ ƒ /api/reports
+├ ƒ /api/search
+├ ƒ /api/seed-categories
+├ ƒ /api/sync-user
+├ ƒ /api/tags
+├ ƒ /api/test-followers
+├ ƒ /api/update-username
+├ ƒ /api/user/[userId]
+├ ƒ /api/user/current
+├ ƒ /api/user/update-username
+├ ƒ /api/user/upload-image
+├ ƒ /api/users/follow
+├ ƒ /api/users/profile
+├ ƒ /api/users/update-bio
+├ ƒ /api/users/update-credentials
+├ ƒ /api/votes
+├ ○ /ask
+├ ○ /bookmarks
+├ ○ /careers
+├ ○ /categories
+├ ƒ /categories/[slug]
+├ ƒ /communities
+├ ƒ /communities/[slug]
+├ ƒ /communities/[slug]/create-post
+├ ○ /cookies
+├ ○ /create-ad
+├ ○ /create-community
+├ ○ /create-poll
+├ ƒ /create-post
+├ ○ /disclaimer
+├ ○ /drafts
+├ ○ /fix-username
+├ ○ /grievance
+├ ○ /icon.png
+├ ○ /languages
+├ ○ /messages
+├ ○ /monetization
+├ ○ /new-post
+├ ○ /notifications
+├ ○ /onboarding
+├ ƒ /polls/[id]
+├ ƒ /post/[id]
+├ ○ /premium
+├ ○ /press
+├ ○ /privacy
+├ ○ /profile
+├ ƒ /profile/[username]
+├ ƒ /question/[id]
+├ ○ /search
+├ ○ /settings
+├ ○ /stats
+├ ○ /stats.bak
+├ ○ /studio/[[...tool]]
+├ ○ /success-stories                          1m      1y
+├ ○ /terms
+└ ○ /travel-tips                              1m      1y
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

@@ -1,12 +1,11 @@
 import React from "react";
-import { sanityFetch } from "@/sanity/lib/live";
-import { defineQuery } from "groq";
 import { Users, Plus, Hash, MessageCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { currentUser } from "@clerk/nextjs/server";
 import CommunityCard from "@/components/CommunityCard";
+import { getAllCommunities } from "@/lib/db/queries";
 
 interface Community {
   _id: string;
@@ -17,26 +16,16 @@ interface Community {
   };
   memberCount?: number;
   postCount?: number;
+  image?: {
+    asset: {
+      url: string;
+    }
+  };
   createdAt: string;
   moderator?: {
     clerkId?: string;
   };
 }
-
-const communitiesQuery = defineQuery(`
-  *[_type == "subreddit"] | order(createdAt desc) {
-    _id,
-    title,
-    description,
-    slug,
-    "memberCount": count(*[_type == "user" && references(^._id)]),
-    "postCount": count(*[_type == "post" && references(^._id) && !isDeleted]),
-    createdAt,
-    moderator->{
-      clerkId
-    }
-  }
-`);
 
 export default async function CommunitiesPage() {
   let communities: Community[] = [];
@@ -44,11 +33,7 @@ export default async function CommunitiesPage() {
   const user = await currentUser();
 
   try {
-    const result = await sanityFetch({
-      query: communitiesQuery,
-      params: {}
-    });
-    communities = result.data || [];
+    communities = await getAllCommunities() as any[];
   } catch (error) {
     console.error("Error fetching communities:", error);
     loading = true;

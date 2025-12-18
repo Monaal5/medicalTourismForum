@@ -1,4 +1,5 @@
 "use client";
+import React, { useEffect, useCallback, useMemo } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -23,7 +24,6 @@ import {
     AlignJustify,
     Image as ImageIcon
 } from 'lucide-react';
-import { useEffect, useCallback } from 'react';
 
 interface RichTextEditorProps {
     value: string;
@@ -32,27 +32,31 @@ interface RichTextEditorProps {
 }
 
 export default function RichTextEditor({ value, onChange, placeholder = "Write your content here..." }: RichTextEditorProps) {
+
+    // Memoize extensions to prevent "Duplicate extension" warning
+    const extensions = useMemo(() => [
+        StarterKit.configure({
+            heading: {
+                levels: [1, 2, 3],
+            },
+        }),
+        Placeholder.configure({
+            placeholder,
+        }),
+        Image,
+        Underline,
+        TextAlign.configure({
+            types: ['heading', 'paragraph'],
+        }),
+    ], [placeholder]);
+
     const editor = useEditor({
         immediatelyRender: false,
-        extensions: [
-            StarterKit.configure({
-                heading: {
-                    levels: [1, 2, 3],
-                },
-            }),
-            Placeholder.configure({
-                placeholder,
-            }),
-            Image,
-            Underline,
-            TextAlign.configure({
-                types: ['heading', 'paragraph'],
-            }),
-        ] as any,
+        extensions,
         content: value,
         editorProps: {
             attributes: {
-                class: 'focus:outline-none min-h-[200px] max-w-none p-4',
+                class: 'focus:outline-none min-h-[200px] max-w-none p-4 prose prose-sm sm:prose lg:prose-lg xl:prose-xl focus:ring-0 ring-0 outline-none border-none',
             },
         },
         onUpdate: ({ editor }) => {
@@ -221,7 +225,10 @@ export default function RichTextEditor({ value, onChange, placeholder = "Write y
             </div>
 
             {/* Editor Content */}
-            <EditorContent editor={editor} />
+            <div className="prose-container">
+                <EditorContent editor={editor} />
+            </div>
         </div>
     );
 }
+

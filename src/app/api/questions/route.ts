@@ -1,9 +1,26 @@
+
 import { NextResponse } from "next/server";
-import { adminClient } from "@/sanity/lib/adminClient";
-import { addUser } from "@/sanity/lib/user/addUser";
-import { generateUsername } from "@/lib/username";
-import { defineQuery } from "groq";
+import { supabaseAdmin as supabase } from "@/lib/supabase";
 import { extractHashtags } from "@/lib/hashtags";
+
+// Helper to map (duplicate of queries.ts one if not exported)
+function mapQuestion(question: any) {
+  return {
+    _id: question.id,
+    title: question.title,
+    description: question.description,
+    author: question.author || { username: 'Unknown', imageUrl: '' },
+    category: question.category,
+    image: null,
+    tags: question.tags,
+    isAnswered: question.is_answered,
+    isDeleted: false,
+    createdAt: question.created_at,
+    answerCount: question.answers?.[0]?.count || 0,
+    voteCount: 0,
+    topAnswer: null
+  };
+}
 
 export async function GET(request: Request) {
   try {
@@ -11,46 +28,51 @@ export async function GET(request: Request) {
     const category = searchParams.get("category");
     const unanswered = searchParams.get("unanswered");
 
-    console.log("=== QUESTIONS API GET ===");
-    console.log("Category filter:", category);
+    console.log("=== QUESTIONS API GET (Supabase) ===");
+    console.log("Category filter:", category); // category ID in Sanity, likely ID in Supabase too
     console.log("Unanswered filter:", unanswered);
 
-    let filters = [`_type == "question"`, `!isDeleted`];
+    let query = supabase
+      .from('questions')
+      .select(`
+            id,
+            title,
+            description,
+            tags,
+            is_answered,
+            created_at,
+            view_count,
+            author:users!author_id (username, image_url, clerk_id),
+            category:categories (id, name, icon, color),
+            answers:answers(count)
+        `)
+      .order('created_at', { ascending: false })
+      .limit(50);
 
-    // Filter by category if provided
     if (category) {
-      filters.push(`category._ref == "${category}"`);
+      // category param might be ID. Sanity used _ref.
+      // Assuming frontend passes ID.
+      query = query.eq('category_id', category);
     }
 
-    // Filter for unanswered questions if requested
     if (unanswered === "true") {
-      filters.push(`count(*[_type == "answer" && references(^._id) && !isDeleted]) == 0`);
+      query = query.eq('is_answered', false);
+      // Note: is_answered flag is manual. 
+      // Sanity query checked count > 0. 
+      // Supabase approach: filtering by related count is harder in one go without raw SQL or RPC.
+      // But we have is_answered column which is a good proxy if maintained.
+      // Alternatively, fetch and filter in JS (expensive) or use !inner join on answers.
+      // Let's stick to is_answered column for now.
     }
 
-    const query = `*[${filters.join(" && ")}] | order(createdAt desc) [0...50] {
-      _id,
-      title,
-      description,
-      author->{
-        username,
-        imageUrl
-      },
-      category->{
-        _id,
-        name,
-        color,
-        icon
-      },
-      tags,
-      createdAt,
-      "answerCount": count(*[_type == "answer" && references(^._id) && !isDeleted]),
-      isAnswered
-    }`;
+    const { data, error } = await query;
 
-    console.log("Final query:", query);
+    if (error) {
+      console.error("Error fetching questions:", error);
+      throw error;
+    }
 
-    const questions = await adminClient.fetch(query);
-    console.log("Questions found:", questions?.length || 0);
+    const questions = data.map(mapQuestion);
 
     return NextResponse.json({
       success: true,
@@ -93,70 +115,55 @@ export async function POST(request: Request) {
       );
     }
 
-    // Ensure user exists in Sanity
-    console.log("Fetching/creating user in Sanity...");
+    // 1. Get User ID (internal UUID) from Clerk ID
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('id, username')
+      .eq('clerk_id', userId)
+      .single();
 
-    // First, check if user already exists by Clerk ID
-    let sanityUser = await adminClient.fetch(
-      `*[_type == "user" && clerkId == $clerkId][0]`,
-      { clerkId: userId }
-    );
-
-    if (sanityUser) {
-      console.log("✓ Existing user found:", sanityUser._id, "with username:", sanityUser.username);
-    } else {
-      // User doesn't exist, create new one
-      console.log("Creating new user in Sanity...");
-      sanityUser = await addUser({
-        id: userId,
-        username: generateUsername(userFullName || "User", userId),
-        email: userEmail || "user@example.com",
-        imageUrl: userImageUrl || "",
-      });
-      console.log("✓ New user created:", sanityUser._id);
+    if (userError || !user) {
+      // User should exist by now due to sync, but if not we could auto-create?
+      // Better to return error as sync should handle creation.
+      console.error("User not found for question creation:", userId);
+      return NextResponse.json({ error: "User not found. Please refresh." }, { status: 404 });
     }
 
-    // Create the question
-    const questionData: any = {
-      _type: "question",
-      title: title,
-      author: {
-        _type: "reference",
-        _ref: sanityUser._id,
-      },
-      isAnswered: false,
-      isDeleted: false,
-      createdAt: new Date().toISOString(),
-    };
-
-    if (description) {
-      questionData.description = description;
-    }
-
+    // 2. Prepare Tags
     const extractedTags = [
       ...extractHashtags(title),
       ...extractHashtags(description || ""),
     ];
-
+    let finalTags: string[] = [];
     if (tags && tags.length > 0) {
-      // Combine and unique
-      questionData.tags = [...new Set([...tags, ...extractedTags])];
+      finalTags = [...new Set([...tags, ...extractedTags])];
     } else if (extractedTags.length > 0) {
-      questionData.tags = extractedTags;
+      finalTags = extractedTags;
     }
 
-    if (categoryId) {
-      questionData.category = {
-        _type: "reference",
-        _ref: categoryId,
-      };
+    // 3. Insert Question
+    const { data: newQuestion, error: createError } = await supabase
+      .from('questions')
+      .insert({
+        title,
+        description,
+        author_id: user.id,
+        category_id: categoryId, // Assuming this is UUID
+        tags: finalTags,
+        is_answered: false,
+        is_anonymous: body.isAnonymous || false
+      })
+      .select()
+      .single();
+
+    if (createError) {
+      console.error("Error creating question:", createError);
+      throw createError;
     }
 
-    console.log("Creating question with data:", questionData);
-    const question = await adminClient.create(questionData);
-    console.log("Question created successfully:", question._id);
+    console.log("Question created successfully:", newQuestion.id);
 
-    return NextResponse.json({ question });
+    return NextResponse.json({ question: { _id: newQuestion.id } }); // Return format expected by frontend
   } catch (error) {
     console.error("Error creating question:", error);
     return NextResponse.json(
