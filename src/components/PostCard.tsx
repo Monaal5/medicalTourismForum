@@ -26,7 +26,7 @@ import toast from "react-hot-toast";
 interface PostWithDetails {
   _id: string;
   postTitle: string;
-  body?: any[];
+  body?: any;
   image?: {
     _type: 'image';
     asset: {
@@ -309,9 +309,15 @@ export default function PostCard({ post }: PostCardProps) {
                 </p>
               ))
             ) : typeof post.body === 'string' ? (
-              <p>{post.body}</p>
+              <div
+                className="prose prose-sm max-w-none text-gray-700 [&>p]:mb-0"
+                dangerouslySetInnerHTML={{ __html: post.body }}
+              />
             ) : (post.body as any).content ? (
-              <p>{(post.body as any).content}</p>
+              <div
+                className="prose prose-sm max-w-none text-gray-700 [&>p]:mb-0"
+                dangerouslySetInnerHTML={{ __html: (post.body as any).content }}
+              />
             ) : null}
           </div>
         )}

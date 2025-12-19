@@ -379,7 +379,10 @@ export default function PostContent({ post, comments, onCommentAdded }: PostCont
                   ) : typeof post.body === 'string' ? (
                     <p>{post.body}</p>
                   ) : (post.body as any).content ? (
-                    <p>{(post.body as any).content}</p>
+                    <div
+                      className="prose prose-lg max-w-none text-gray-800"
+                      dangerouslySetInnerHTML={{ __html: (post.body as any).content }}
+                    />
                   ) : null}
                 </div>
               )}

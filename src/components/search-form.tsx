@@ -18,7 +18,7 @@ export function SearchForm() {
           </Label>
           <SidebarInput
             id="search"
-            name = "query"
+            name="q"
             placeholder="Search communities..."
             className="pl-8"
           />

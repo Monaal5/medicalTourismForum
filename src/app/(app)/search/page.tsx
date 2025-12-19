@@ -6,6 +6,9 @@ import {
   MessageSquare,
   FileQuestion,
   Loader2,
+  Users,
+  Layers,
+  AlertCircle,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -73,7 +76,24 @@ interface User {
   joinedAt: string;
 }
 
-type SearchTab = "all" | "questions" | "posts" | "users" | "answers";
+interface Category {
+  _id: string;
+  name: string;
+  slug: string;
+  color: string;
+  description?: string;
+}
+
+interface Community {
+  _id: string;
+  title: string;
+  slug: string;
+  description?: string;
+  imageUrl?: string;
+  memberCount?: number;
+}
+
+type SearchTab = "all" | "questions" | "posts" | "users" | "answers" | "categories" | "communities";
 
 function SearchPageContent() {
   const searchParams = useSearchParams();
@@ -88,6 +108,9 @@ function SearchPageContent() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [answers, setAnswers] = useState<Answer[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [communities, setCommunities] = useState<Community[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (initialQuery) {
@@ -96,11 +119,14 @@ function SearchPageContent() {
   }, [initialQuery]);
 
   const performSearch = async (query: string) => {
+    setError(null);
     if (!query.trim()) {
       setQuestions([]);
       setPosts([]);
       setUsers([]);
       setAnswers([]);
+      setCategories([]);
+      setCommunities([]);
       return;
     }
 
@@ -117,9 +143,14 @@ function SearchPageContent() {
         setPosts(data.posts || []);
         setUsers(data.users || []);
         setAnswers(data.answers || []);
+        setCategories(data.categories || []);
+        setCommunities(data.communities || []);
+      } else {
+        setError(data.error || "An unknown error occurred");
       }
     } catch (error) {
       console.error("Search error:", error);
+      setError("Failed to fetch search results");
     } finally {
       setLoading(false);
     }
@@ -134,25 +165,120 @@ function SearchPageContent() {
   };
 
   const getTotalResults = () => {
-    return questions.length + posts.length + users.length + answers.length;
+    return questions.length + posts.length + users.length + answers.length + categories.length + communities.length;
   };
 
   const getFilteredResults = () => {
     switch (activeTab) {
       case "questions":
-        return { questions, posts: [], users: [], answers: [] };
+        return { questions, posts: [], users: [], answers: [], categories: [], communities: [] };
       case "posts":
-        return { questions: [], posts, users: [], answers: [] };
+        return { questions: [], posts, users: [], answers: [], categories: [], communities: [] };
       case "users":
-        return { questions: [], posts: [], users, answers: [] };
+        return { questions: [], posts, users: [], answers: [], categories: [], communities: [] };
       case "answers":
-        return { questions: [], posts: [], users: [], answers };
+        return { questions: [], posts: [], users: [], answers, categories: [], communities: [] };
+      case "categories":
+        return { questions: [], posts: [], users: [], answers: [], categories, communities: [] };
+      case "communities":
+        return { questions: [], posts: [], users: [], answers: [], categories: [], communities };
       default:
-        return { questions, posts, users, answers };
+        return { questions, posts, users, answers, categories, communities };
     }
   };
 
   const filtered = getFilteredResults();
+
+  const renderCategories = (categoriesToRender: Category[]) => {
+    if (categoriesToRender.length === 0) return null;
+
+    return (
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+          <Layers className="w-5 h-5" />
+          <span>Categories ({categoriesToRender.length})</span>
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {categoriesToRender.map((category) => (
+            <Link
+              key={category._id}
+              href={`/categories/${category.slug}`}
+              className="block bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow relative overflow-hidden group"
+            >
+              <div
+                className="absolute top-0 left-0 w-1 h-full"
+                style={{ backgroundColor: category.color || '#3b82f6' }}
+              />
+              <div className="pl-3">
+                <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 mb-1">
+                  {category.name}
+                </h3>
+                {category.description && (
+                  <p className="text-sm text-gray-500 line-clamp-2">
+                    {category.description}
+                  </p>
+                )}
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderCommunities = (communitiesToRender: Community[]) => {
+    if (communitiesToRender.length === 0) return null;
+
+    return (
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+          <Users className="w-5 h-5" />
+          <span>Communities ({communitiesToRender.length})</span>
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {communitiesToRender.map((community) => (
+            <Link
+              key={community._id}
+              href={`/communities/${community.slug}`}
+              className="block bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow"
+            >
+              <div className="flex items-center space-x-3 mb-2">
+                {community.imageUrl ? (
+                  <Image
+                    src={community.imageUrl}
+                    alt={community.title}
+                    width={40}
+                    height={40}
+                    className="rounded-lg object-cover"
+                    unoptimized
+                  />
+                ) : (
+                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">
+                    <Users className="w-6 h-6" />
+                  </div>
+                )}
+                <div>
+                  <h3 className="font-semibold text-gray-900 hover:text-blue-600">
+                    {community.title}
+                  </h3>
+                  {community.memberCount !== undefined && (
+                    <p className="text-xs text-gray-500">
+                      {community.memberCount.toLocaleString()} members
+                    </p>
+                  )}
+                </div>
+              </div>
+              {community.description && (
+                <p className="text-sm text-gray-600 line-clamp-2">
+                  {community.description}
+                </p>
+              )}
+            </Link>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
   const renderQuestions = (questionsToRender: Question[]) => {
     if (questionsToRender.length === 0) return null;
@@ -228,11 +354,15 @@ function SearchPageContent() {
               {post.postTitle}
             </h3>
             {post.body && (
-              <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-                {post.body.map((block: any) =>
-                  block.children?.map((child: any) => child.text).join('')
-                ).join(' ')}
-              </p>
+              <div className="text-gray-600 text-sm mb-3 line-clamp-2">
+                {Array.isArray(post.body) ? (
+                  post.body.map((block: any) =>
+                    block.children?.map((child: any) => child.text).join('')
+                  ).join(' ')
+                ) : typeof post.body === 'string' ? (
+                  post.body
+                ) : null}
+              </div>
             )}
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
@@ -384,6 +514,8 @@ function SearchPageContent() {
                     setPosts([]);
                     setUsers([]);
                     setAnswers([]);
+                    setCategories([]);
+                    setCommunities([]);
                     router.push("/search");
                   }}
                   className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
@@ -418,6 +550,12 @@ function SearchPageContent() {
                   </>
                 )}
               </p>
+              {error && (
+                <div className="flex items-center text-red-600 text-sm">
+                  <AlertCircle className="w-4 h-4 mr-1" />
+                  {error}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -429,8 +567,8 @@ function SearchPageContent() {
               <button
                 onClick={() => setActiveTab("all")}
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === "all"
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                   }`}
               >
                 All ({getTotalResults()})
@@ -438,8 +576,8 @@ function SearchPageContent() {
               <button
                 onClick={() => setActiveTab("questions")}
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === "questions"
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                   }`}
               >
                 Questions ({questions.length})
@@ -447,8 +585,8 @@ function SearchPageContent() {
               <button
                 onClick={() => setActiveTab("posts")}
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === "posts"
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                   }`}
               >
                 Posts ({posts.length})
@@ -456,8 +594,8 @@ function SearchPageContent() {
               <button
                 onClick={() => setActiveTab("users")}
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === "users"
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                   }`}
               >
                 Users ({users.length})
@@ -465,11 +603,29 @@ function SearchPageContent() {
               <button
                 onClick={() => setActiveTab("answers")}
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === "answers"
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                   }`}
               >
                 Answers ({answers.length})
+              </button>
+              <button
+                onClick={() => setActiveTab("categories")}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === "categories"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+              >
+                Categories ({categories.length})
+              </button>
+              <button
+                onClick={() => setActiveTab("communities")}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === "communities"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+              >
+                Communities ({communities.length})
               </button>
             </nav>
           </div>
@@ -483,6 +639,8 @@ function SearchPageContent() {
         ) : initialQuery ? (
           getTotalResults() > 0 ? (
             <div className="space-y-8">
+              {renderCategories(filtered.categories)}
+              {renderCommunities(filtered.communities)}
               {renderQuestions(filtered.questions)}
               {renderPosts(filtered.posts)}
               {renderUsers(filtered.users)}

@@ -23,8 +23,29 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-    title: "Medical Tourism Forum - Healthcare Discussion Community",
-    description: "Join the medical tourism community to discuss healthcare experiences, ask questions, and share knowledge about medical treatments worldwide.",
+    metadataBase: new URL("https://www.medicaltourismforum.com"),
+    title: {
+        default: "Medical Tourism Forum - Healthcare Discussion Community",
+        template: "%s | Medical Tourism Forum",
+    },
+    description: "Join the premier medical tourism community to discuss healthcare experiences, cosmetic surgery, dental work to hair transplants abroad. Connect with patients and doctors worldwide.",
+    keywords: ["medical tourism", "healthcare abroad", "cosmetic surgery", "dental tourism", "hair transplant", "medical forum", "patient reviews", "doctor recommendations"],
+    openGraph: {
+        type: "website",
+        locale: "en_US",
+        url: "https://www.medicaltourismforum.com",
+        title: "Medical Tourism Forum",
+        description: "Connect with patients and doctors worldwide. Share experiences and find top clinics for your medical needs.",
+        siteName: "Medical Tourism Forum",
+    },
+    twitter: {
+        card: "summary_large_image",
+        title: "Medical Tourism Forum",
+        description: "Join the discussion on medical tourism and healthcare abroad.",
+    },
+    alternates: {
+        canonical: "/",
+    },
 };
 
 export default function RootLayout({

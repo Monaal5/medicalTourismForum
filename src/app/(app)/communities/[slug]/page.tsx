@@ -4,12 +4,15 @@ import { Plus } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import PostCard from "@/components/PostCard";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin as supabase } from "@/lib/supabase";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 interface PostWithDetails {
     _id: string;
     postTitle: string;
-    body?: any[];
+    body?: any;
     image?: any;
     publishedAt: string;
     author: {
@@ -94,13 +97,13 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
                     community:communities(title, slug)
                 `)
                 .eq('community_id', communityData.id)
-                .order('created_at', { ascending: false });
+                .order('published_at', { ascending: false });
 
             if (postsData) {
                 posts = postsData.map((post: any) => ({
                     _id: post.id,
                     postTitle: post.title,
-                    body: post.body ? [{ _type: 'block', children: [{ _type: 'span', text: typeof post.body === 'string' ? post.body : "Content" }] }] : [],
+                    body: post.body,
                     image: post.image_url ? { asset: { url: post.image_url } } : undefined,
                     publishedAt: post.created_at || post.published_at,
                     author: {

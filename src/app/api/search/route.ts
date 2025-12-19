@@ -91,6 +91,20 @@ export async function GET(request: NextRequest) {
       .or(`username.ilike.${searchTerm},email.ilike.${searchTerm}`)
       .limit(10);
 
+    // Search Categories
+    const { data: categories, error: cError } = await supabase
+      .from('categories')
+      .select('id, name, slug, color, description')
+      .ilike('name', searchTerm)
+      .limit(10);
+
+    // Search Communities
+    const { data: communities, error: coError } = await supabase
+      .from('communities')
+      .select('id, title, slug, description, image_url')
+      .ilike('title', searchTerm)
+      .limit(10);
+
     // Search Answers (Content)
     // Answers body is JSONB often, but sticking to simple text if possible. 
     // Supabase casting: body->>'content' ilike ... if it's json.
@@ -140,14 +154,33 @@ export async function GET(request: NextRequest) {
       joinedAt: u.joined_at
     })) || [];
 
+    const mappedCategories = categories?.map((c: any) => ({
+      _id: c.id,
+      name: c.name,
+      slug: c.slug,
+      color: c.color,
+      description: c.description
+    })) || [];
+
+    const mappedCommunities = communities?.map((c: any) => ({
+      _id: c.id,
+      title: c.title,
+      slug: c.slug,
+      description: c.description,
+      imageUrl: c.image_url,
+      memberCount: 0
+    })) || [];
+
     return NextResponse.json({
       success: true,
       query,
       questions: mappedQuestions,
       posts: mappedPosts,
       users: mappedUsers,
+      categories: mappedCategories,
+      communities: mappedCommunities,
       answers: [],
-      totalResults: mappedQuestions.length + mappedPosts.length + mappedUsers.length
+      totalResults: mappedQuestions.length + mappedPosts.length + mappedUsers.length + mappedCategories.length + mappedCommunities.length
     });
 
   } catch (error: any) {
@@ -159,6 +192,8 @@ export async function GET(request: NextRequest) {
         questions: [],
         posts: [],
         users: [],
+        categories: [],
+        communities: [],
         answers: [],
       },
       { status: 500 }
